@@ -335,6 +335,17 @@ export function finishJob(x: Explorer, now: number): void {
   refreshUI(x);
 }
 
+/** Drops the layer being built (out of memory): its points, and the states it had found so far. */
+export function abortDotLayer(x: Explorer): void {
+  const D = x.dots; if (!D) { x.job = null; return; }
+  const nd = x.job ? x.job.nd : x.graph.depthShown + 1, L = D.layers[nd];
+  if (L) { x.gs.scene.remove(L.pts); L.g.dispose(); L.mat.dispose(); D.layers[nd] = undefined; }
+  const o = D.off[nd], n = D.cnt[nd] || 0;
+  for (let k = 0; k < n; k++) { const c = D.codes[o + k]; D.dist[c] = FAR; D.map[c] = -1; D.pin[o + k] = 0; }
+  if (o !== undefined) D.cnt[nd] = 0;
+  x.job = null; x.growth.growing = false;
+}
+
 /** Removes all dot layers (Start over, or switching the metric). */
 export function freeDots(x: Explorer): void {
   if (x.dots) for (const L of x.dots.layers) if (L) { x.gs.scene.remove(L.pts); L.g.dispose(); L.mat.dispose(); }

@@ -73,6 +73,30 @@ export interface Growth {
   auto: boolean;
   settledAt: number;
   busyShown: string;
+  /** the most layers this explorer may add (an embed can set fewer than all) */
+  maxLayers: number;
+  /** layers the user agreed to add after a heads-up on a constrained device */
+  agreed: Set<number>;
+  /** the device could not hold the outer layers: growth stops at the cube layers */
+  outOfMemory: boolean;
+}
+
+export type ToolsTab = 'find' | 'turn' | 'view' | 'data' | 'about';
+
+/** The controls on the stage (src/ui/controls.ts). */
+export interface Controls {
+  /** the selection card shows once the user has picked or moved to a state, until they deselect */
+  cardWanted: boolean;
+  cardCollapsed: boolean;
+  coachDismissed: boolean;
+  toolsOpen: boolean;
+  tab: ToolsTab;
+  /** frame-time watchdog: smoothed frame time, since when it has been slow, and whether we asked */
+  frameMs: number;
+  slowSince: number;
+  slowAsked: boolean;
+  /** what the heads-up's "Add it" does */
+  headsYes: (() => void) | null;
 }
 
 export interface Explorer {
@@ -105,6 +129,7 @@ export interface Explorer {
   cam: CameraState;
   pointer: Pointer;
   growth: Growth;
+  ui: Controls;
 
   /** the outer layers (null until the first one is grown) and the layer being built */
   dots: Dots | null;

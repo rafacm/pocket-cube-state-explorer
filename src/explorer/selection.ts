@@ -11,6 +11,7 @@ import { walkFly } from '../cube/walks';
 import { flyTo } from '../render/navigation';
 import { renderNet, renderOrientation } from '../ui/net';
 import { renderRoutes } from '../ui/routes';
+import { updateCard } from '../ui/controls';
 
 /** Boxed turn labels: decided from the selection itself every time, so no box can outlive its state. */
 export const boxesShown = (x: Explorer): boolean => x.sel.on && x.sel.boxKey !== null && x.sel.boxKey === x.cube.key;
@@ -40,6 +41,7 @@ export function onState(x: Explorer): void {
   if (el.optFollow.checked && (busy(x) || x.cube.anim)) { const P = currentPoint(x); if (P) flyTo(x, P, walkFly(x) * 0.95); }
   computeHighlight(x);
   renderRoutes(x);
+  updateCard(x);
 }
 
 /** The route segments to draw as tubes. */
@@ -83,5 +85,6 @@ export function deselect(x: Explorer): void {
   const s = x.sel;
   if (!s.on) return;
   clearLoop(x); s.on = false; x.labels.dirty = true; s.boxKey = null; s.boxOn = false; x.renderDirty = true;
-  computeHighlight(x); renderRoutes(x);
+  x.ui.cardWanted = false;
+  computeHighlight(x); renderRoutes(x); updateCard(x);
 }

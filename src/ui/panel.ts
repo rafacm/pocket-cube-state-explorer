@@ -6,7 +6,8 @@ import type { Explorer } from '../explorer/types';
 import { onState } from '../explorer/selection';
 import { currentPoint, dotPoint } from '../explorer/locate';
 import { listen } from '../explorer/events';
-import { grow, setAuto, startOver } from '../explorer/grow';
+import { grow, layerCap, setAuto, startOver } from '../explorer/grow';
+import { updateCoach } from './controls';
 import { busy } from '../cube/live-cube';
 import { SPEEDS, goHome, jumpTo, normalize, playFromSolved, queueMove, walkLoop } from '../cube/walks';
 import { shownIn, totalEdges, totalStates } from '../outer/dots';
@@ -44,22 +45,35 @@ export function refreshUI(x: Explorer): void {
   applyView(x);
   el.labelsText.textContent = 'Label links with their turns (labels appear as you zoom close enough to read them)';
   x.labels.dirty = true;
-  const g = el.btnGrow;
+  const g = el.btnGrow, cap = layerCap(x), unit = x.halfTurns ? ' moves' : ' turns';
   if (depthShown >= max) {
-    g.textContent = 'All ' + max + ' layers grown'; g.disabled = true; x.growth.auto = false;
-    el.growNote.textContent = 'Every one of the ' + fmt(NSTATE) + ' states is drawn. None is more than ' + max + (x.halfTurns ? ' moves' : ' quarter turns') + ' from solved.';
+    g.textContent = 'All ' + max + ' layers drawn'; g.disabled = true; x.growth.auto = false;
+    el.growNote.textContent = 'All ' + fmt(NSTATE) + ' states, none more than ' + max + unit + ' from solved';
+    setAuto(x, false);
+  } else if (depthShown >= cap) {
+    g.textContent = 'All ' + cap + ' layers shown'; g.disabled = true;
+    el.growNote.textContent = x.growth.outOfMemory ? 'Not enough memory for more layers here' : 'The full explorer shows all ' + max;
     setAuto(x, false);
   } else {
-    g.textContent = 'Grow layer ' + (depthShown + 1); g.disabled = x.growth.growing;
-    const add = tot[depthShown + 1], asDots = depthShown + 1 > fullMax(x.halfTurns);
-    el.growNote.textContent = 'Adds ' + fmt(add) + ' new states' + (asDots ? ', drawn as dots.' : '.') +
-      (!asDots && add > 20000 ? ' The layout takes several seconds to settle.' : !asDots && add > 5000 ? ' The layout takes a few seconds to settle.' : '');
+    const nd = depthShown + 1, add = tot[nd], asDots = nd > fullMax(x.halfTurns);
+    g.textContent = 'Add layer ' + nd; g.disabled = x.growth.growing;
+    el.growNote.textContent = '+' + fmt(add) + ' states, ' + nd + (nd === 1 ? unit.replace(/s$/, '') : unit) + ' from solved' + (asDots ? ', as dots' : '');
   }
+  renderMeter(x);
+  updateCoach(x);
   renderCensus(x);
   renderRoutesIn(x);
   // the legend lists only what is on screen
   el.legBundles.hidden = !(x.bundles.tree.n + x.bundles.extra.n > 0 && el.optBundles.checked);
   onState(x);
+}
+
+/** The layer meter in the growth bar: one mark per layer, filled when drawn; dot layers are round. */
+function renderMeter(x: Explorer): void {
+  const tot = totals(x.halfTurns), F = fullMax(x.halfTurns), m = x.el.meter;
+  if (m.childElementCount !== tot.length) m.innerHTML = tot.map((_, d) => '<i' + (d > F ? ' class="dot"' : '') + '></i>').join('');
+  [...m.children].forEach((c, d) => c.classList.toggle('on', drawnIn(x, d) >= tot[d]));
+  m.setAttribute('aria-label', x.graph.depthShown + ' of ' + (tot.length - 1) + ' layers drawn');
 }
 
 function drawnIn(x: Explorer, d: number): number {

@@ -7,7 +7,9 @@ import { computeRadii } from '../graph/radii';
 import { abortTurn, paintCube } from '../cube/live-cube';
 import { addLinkToScene, addNodeToScene, syncLines } from '../render/scene';
 import { fitTo } from '../render/navigation';
-import { freeDots, startDotLayer } from '../outer/dots';
+import { abortDotLayer, freeDots, startDotLayer } from '../outer/dots';
+import { headsUpFor } from './device';
+import { showHeads, updateCard, updateCoach } from '../ui/controls';
 import { buildPad, refreshUI, renderCensus } from '../ui/panel';
 import { showBusy } from '../ui/status';
 
@@ -27,17 +29,50 @@ function growCubeLayer(x: Explorer): void {
   refreshUI(x);
 }
 
+/** The last layer this explorer may add: all of them, fewer for an embed that caps them, or the cube
+ *  layers only after the device ran out of memory for the outer ones. */
+export function layerCap(x: Explorer): number {
+  return Math.min(x.growth.maxLayers, maxDepth(x.halfTurns));
+}
+
+/** Out of memory while setting up or building an outer layer: drop that layer and stop growing there. */
+export function stopOutOfMemory(x: Explorer, err: unknown): void {
+  if (!(err instanceof RangeError)) throw err;
+  console.warn('Pocket Cube State Explorer: not enough memory for the next layer', err);
+  abortDotLayer(x);
+  x.growth.outOfMemory = true;
+  x.growth.maxLayers = Math.min(x.growth.maxLayers, x.graph.depthShown);
+  setAuto(x, false); showBusy(x, null);
+  refreshUI(x);
+  showHeads(x, `This device could not set aside the memory for layer ${x.graph.depthShown + 1}, so the graph stops at layer ${x.graph.depthShown}. Everything drawn so far keeps working.`, null);
+}
+
 /** Grow: show what is coming, let the browser paint, then build the layer. */
 export function grow(x: Explorer): boolean {
   const g = x.graph;
-  if (x.growth.growing || x.job || g.depthShown >= maxDepth(x.halfTurns)) return false;
+  if (x.growth.growing || x.job || g.depthShown >= layerCap(x) || !x.el.heads.hidden) return false;
+  const nd = g.depthShown + 1;
+  // a heads-up before the heavy layers on a device that may struggle (Auto pauses until answered)
+  if (!x.growth.agreed.has(nd)) {
+    const warn = headsUpFor(x, nd);
+    if (warn) {
+      const wasAuto = x.growth.auto;
+      setAuto(x, false);
+      showHeads(x, warn, () => { x.growth.agreed.add(nd); if (wasAuto) setAuto(x, true); else grow(x); });
+      return false;
+    }
+  }
   x.growth.growing = true;
+  updateCoach(x);
   const add = totals(x.halfTurns)[g.depthShown + 1];
   x.el.btnGrow.disabled = true;
   const later = (fn: () => void) => requestAnimationFrame(() => setTimeout(() => { if (!x.destroyed) fn(); }, 0));
   if (g.depthShown >= fullMax(x.halfTurns)) {
     showBusy(x, 'Layer ' + (g.depthShown + 1) + ' · preparing…', 0);
-    later(() => { startDotLayer(x); renderCensus(x); });
+    later(() => {
+      try { startDotLayer(x); } catch (err) { x.growth.growing = false; stopOutOfMemory(x, err); return; }
+      renderCensus(x);
+    });
     return true;
   }
   showBusy(x, 'Adding ' + fmt(add) + ' states…', 0);
@@ -46,7 +81,7 @@ export function grow(x: Explorer): boolean {
 }
 
 export function setAuto(x: Explorer, on: boolean): void {
-  if (on && x.graph.depthShown >= maxDepth(x.halfTurns)) on = false;
+  if (on && x.graph.depthShown >= layerCap(x)) on = false;
   x.growth.auto = on;
   x.el.btnAuto.setAttribute('aria-pressed', on ? 'true' : 'false');
   if (on && x.graph.alpha < 0.05) grow(x);
@@ -56,7 +91,7 @@ export function setAuto(x: Explorer, on: boolean): void {
 export function stepAuto(x: Explorer, now: number): void {
   const g = x.graph, gr = x.growth;
   if (gr.auto && !gr.growing && !x.job && g.alpha < 0.05 && now - gr.settledAt > 700 && now > g.popUntil + 600) {
-    if (g.depthShown >= maxDepth(x.halfTurns)) setAuto(x, false); else grow(x);
+    if (g.depthShown >= layerCap(x)) setAuto(x, false); else grow(x);
   }
 }
 
@@ -64,6 +99,8 @@ export function stepAuto(x: Explorer, now: number): void {
 export function startOver(x: Explorer): void {
   const c = x.cube;
   c.queue.length = 0; x.sel.loop = null;
+  x.ui.cardWanted = false; updateCard(x);
+  x.el.heads.hidden = true; x.el.slowTip.hidden = true;
   abortTurn(x);
   x.el.cbMove.classList.remove('on');
   c.key = SOLVED; paintCube(x, c.key);

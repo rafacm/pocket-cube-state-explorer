@@ -6,6 +6,3 @@ body { margin: 0; background: #ECEEF3; }
 @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) body { background: #0E1117; } }
 html[data-theme="dark"] body { background: #0E1117; }
 #app { --explorer-height: 100%; }
-@media (max-width: 860px) {
-  html, body, #app { height: auto; }
-}
