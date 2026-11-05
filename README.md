@@ -1,44 +1,74 @@
 # Pocket Cube State Explorer
 
+[![CI](https://github.com/rafacm/pocket-cube-state-explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/rafacm/pocket-cube-state-explorer/actions/workflows/ci.yml)
+
 An interactive 3D map of every state of the 2×2×2 Rubik's Cube (the Pocket Cube). Start from the solved
 cube in the centre and grow the graph layer by layer: each new layer holds every state one more turn
 away, until all **3,674,160** states are drawn. Up close, the states are real cubes with their actual
 stickers, and a large animated cube walks you along any route through the graph.
 
-## Run it
+**Try it: [pocket-cube-state-explorer.vercel.app](https://pocket-cube-state-explorer.vercel.app)**
+(a desktop browser with WebGL works best).
 
-It is a single, self-contained page. Open `index.html` in a modern browser (Chrome, Edge, Safari or
-Firefox with WebGL), or serve the folder:
-
-```sh
-python3 -m http.server 8000   # then open http://localhost:8000
-```
-
-Three.js and the fonts load from public CDNs, so the first load needs an internet connection.
-
-To check the cube logic without a browser (Node 18 or newer, no dependencies):
-
-```sh
-node tests/model-check.mjs   # verifies all 3,674,160 states against the published layer sizes
-```
+![All seven cube layers: 44,971 stickered cubes on nested spheres around the solved cube, joined by links coloured by their turn](docs/screenshots/overview.png)
 
 ## What you can do
 
 - **Grow the graph** one layer at a time, or let Auto-grow build all 14 layers (11 with half turns).
   The first 7 layers are drawn as stickered cubes with all their links; the outer layers stream in as
   dots with a live count and time estimate.
-- **Zoom into any region** (scroll toward the pointer; pan with Space, ⌘ or Ctrl + drag; double-click to
-  fly close): nearby dots turn into cubes with their links and turn labels.
-- **Select a state** by clicking it: the large cube jumps there and its shortest route lights up.
+- **Select a state** by clicking it: the large cube jumps there and its shortest routes light up.
   **Solve** walks it back to solved, **Play from solved** builds it up, and the camera can follow the
-  cube through the graph one state per turn.
+  cube through the graph one state per turn. Click the selected cube again for boxed labels of the
+  turns you can make from it; click one to make that turn.
 - **Find a state** from a scramble (`R U R' F2`) or a facelet string (`WGWG:RRRR:GYGY:YBYB:OOOO:WBWB`),
-  or jump to a random one.
+  or jump to a random one. States beyond the drawn layers are found too, with their distance and a
+  shortest route.
+
+![A scramble found in the graph: the selected cube in its box, its shortest route in pink, links labelled with their turns](docs/screenshots/routes.png)
+
 - **See that it is a graph, not a tree**: switch between all links, the tree of first routes, and the
   extra links that close loops; colour the outer dots by how many shortest routes enter each state;
   bundled links show where routes merge between the outer layers.
+
+![Tree only: the first route found to each state, six layers out from the solved cube](docs/screenshots/tree.png)
+
+- **Zoom into any region** (scroll toward the pointer; pan with Space, ⌘ or Ctrl + drag; double-click to
+  fly close): nearby dots turn into cubes with their links and turn labels.
+
+![Up close in layer 8: the dots around the selected state are drawn as stickered cubes with their links](docs/screenshots/dots-up-close.png)
+
 - **Turn the cube** with U, R, F, D, L, B and whole-cube rotations x, y, z; the 2D net and facelet
   strings show the state, held and in canonical orientation.
+
+## Put it on your site
+
+The explorer is also a web component. Add one script and the element:
+
+```html
+<script type="module" src="https://pocket-cube-state-explorer.vercel.app/embed/pocket-cube-explorer.js"></script>
+
+<pocket-cube-explorer no-header></pocket-cube-explorer>
+```
+
+It renders inside its own shadow root, so your page's styles do not change it and its styles do not
+leak into your page. It starts when it first scrolls near the viewport, and stops (freeing its WebGL
+contexts) when it is removed from the page. A [demo page](https://pocket-cube-state-explorer.vercel.app/embed-demo.html)
+shows two of them in a blog-like layout.
+
+- `no-header` hides its title bar (your page has its own); `eager` starts it at once.
+- Height: `--explorer-height` (default `720px`), e.g. `style="--explorer-height: 80vh"`. Narrower than
+  860 px, the panel goes below the 3D stage and the element grows to fit.
+- `data-theme="light"` or `"dark"` fixes the panel's colour scheme (default: the system's). The design
+  tokens are CSS custom properties, so `pocket-cube-explorer { --accent: #0A7; }` works too.
+- Keys (Esc to deselect, Space to pan) only act inside the explorer, never on the rest of your page.
+
+Without a script, an iframe works too:
+
+```html
+<iframe src="https://pocket-cube-state-explorer.vercel.app/" title="Pocket Cube State Explorer"
+        style="width: 100%; height: 720px; border: 0"></iframe>
+```
 
 ## How it works
 
@@ -59,16 +89,43 @@ node tests/model-check.mjs   # verifies all 3,674,160 states against the publish
   call; the outer layers are GPU point clouds; a grid index finds the dots near the camera; and the page
   only redraws when something changes.
 
+## Development
+
+Needs [Bun](https://bun.sh) (package manager, test runner and script runner).
+
+```sh
+bun install
+bun run dev          # http://localhost:5173 with hot reload
+bun run build        # dist/: the site, plus dist/embed/pocket-cube-explorer.js
+bun run typecheck    # TypeScript, strict
+bun run test         # unit tests: the cube model, the graph, distances of all 3,674,160 states
+bun run e2e          # end-to-end tests in headless Chromium (Playwright)
+bun run screenshots  # regenerates docs/screenshots/ and public/og.png (the link-preview image)
+```
+
+The end-to-end tests and screenshots need Playwright's Chromium (`bunx playwright install --with-deps
+chromium`). They render with software WebGL, so no GPU is needed, but large dot layers take a while.
+On a minimal Linux without root, `scripts/headless-deps.sh` unpacks Chromium's libraries and fonts
+into `.cache/headless/` instead of installing them. CI runs the type check, unit tests, build and
+end-to-end tests on every push and pull request; Vercel deploys `main`.
+
+The code is in `src/`: `model/` (pure cube logic), `graph/` (the cube layers, routes, layout),
+`outer/` (the dot layers), `render/` (Three.js scenes, labels, picking, camera), `cube/` (the live cube
+and its walks), `ui/` (the panel) and `explorer/` (state and the frame loop). `CLAUDE.md` has a
+detailed map.
+
 ## Technologies
 
-Plain JavaScript in one HTML file, no build step:
-
+- [TypeScript](https://www.typescriptlang.org/) (strict) and [Vite](https://vite.dev/), no UI framework
 - [Three.js](https://threejs.org/) r147 (WebGL): `InstancedMesh` with a custom GLSL `ShaderMaterial`
   for the stickered cubes, `Points` for the outer layers, `LineSegments` for links, `OrbitControls`
   for the camera
 - Typed arrays (`Uint8Array`, `Int32Array`, `Float32Array`) for the 3.6 million states
-- Browser APIs: Canvas 2D, `ResizeObserver`, `requestAnimationFrame`, Clipboard API
+- Custom elements and shadow DOM for embedding; CSS custom properties and container queries
+- Browser APIs: Canvas 2D, `ResizeObserver`, `IntersectionObserver`, `requestAnimationFrame`, Clipboard API
 - Google Fonts: Unbounded, Instrument Sans, JetBrains Mono
+- [Bun](https://bun.sh) tests, [Playwright](https://playwright.dev/) end-to-end tests and screenshots,
+  GitHub Actions, [Vercel](https://vercel.com/)
 
 ## Related work
 
