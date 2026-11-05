@@ -128,3 +128,12 @@ export function canonical(key: Key): { key: Key; seq: Move[] } {
   }
   return { key, seq: [] };
 }
+
+const EVERY_MOVE: Move[] = [...ALL_MOVES, ...OPP_MOVES, ...ROT_MOVES];
+/** A turn or rotation by its name in the usual notation (U, U', U2, D, ..., x, y', z2), or undefined. */
+export function moveByName(name: string): Move | undefined { return EVERY_MOVE.find(m => m.name === name); }
+/** The move that undoes mv: any turn (U R F D L B) or whole-cube rotation (x y z). */
+export function invertMove(mv: Move): Move {
+  const q = mv.q === 2 ? 2 : -mv.q;
+  return EVERY_MOVE.find(m => m.ax === mv.ax && m.sel === mv.sel && m.q === q && m.kind === mv.kind)!;
+}

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { SOLVED, applyMove, canonical, faceletString, parseState, ROT_MOVES, ALL_MOVES } from '../src/model';
+import { SOLVED, applyMove, canonical, faceletString, parseState, ROT_MOVES, ALL_MOVES, OPP_MOVES, invertMove, moveByName } from '../src/model';
 
 const key = (text: string) => { const r = parseState(text); if ('error' in r) throw new Error(r.error); return r.key; };
 
@@ -51,4 +51,16 @@ test('facelet strings with wrong letters or counts are rejected', () => {
   expect((parseState('WWWW:RRRR:GGGG:YYYY:OOOO:BBBX') as { error: string }).error).toContain('only the letters W Y R O G B');
   expect((parseState('WWWW:RRRR:GGGG') as { error: string }).error).toContain('needs 24 letters');
   expect((parseState('WWWW:RRRR:GGGG:YYYY:OOOO:BBBW') as { error: string }).error).toContain('exactly 4 times');
+});
+
+test('every turn and rotation has an inverse that undoes it', () => {
+  const key = parseState("R U2 F' D L' B2 x y'") as { key: string };
+  for (const m of [...ALL_MOVES, ...OPP_MOVES, ...ROT_MOVES]) {
+    const inv = invertMove(m);
+    expect(applyMove(applyMove(key.key, m), inv)).toBe(key.key);
+    expect(inv.kind).toBe(m.kind);
+  }
+  expect(invertMove(moveByName('D')!).name).toBe("D'");
+  expect(invertMove(moveByName("x'")!).name).toBe('x');
+  expect(invertMove(moveByName('B2')!).name).toBe('B2');
 });
