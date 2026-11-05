@@ -75,9 +75,9 @@ interface Scene {
 const shot = (name: string) => join(ROOT, 'docs/screenshots', name + '.png');
 const scenes: Scene[] = [
   {
-    name: 'overview', what: 'all 7 cube layers: 44,971 stickered cubes and their links',
+    name: 'overview', what: 'the first 3 layers: 154 stickered cubes, their links and turn labels',
     width: 1600, height: 1000, out: shot('overview'),
-    async run(page) { await growTo(page, 7); await settle(page, 12000); },
+    async run(page) { await growTo(page, 3); await settle(page, 9000); },
   },
   {
     name: 'routes', what: 'a scramble found in the graph: its shortest routes, links and turn labels up close',

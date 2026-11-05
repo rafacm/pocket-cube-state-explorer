@@ -10,7 +10,7 @@ stickers, and a large animated cube walks you along any route through the graph.
 **Try it: [pocket-cube-state-explorer.vercel.app](https://pocket-cube-state-explorer.vercel.app)**
 (a desktop browser with WebGL works best).
 
-![All seven cube layers: 44,971 stickered cubes on nested spheres around the solved cube, joined by links coloured by their turn](docs/screenshots/overview.png)
+![The first three layers: 154 stickered cubes around the solved cube, joined by links coloured and labelled by their turn](docs/screenshots/overview.png)
 
 ## What you can do
 
