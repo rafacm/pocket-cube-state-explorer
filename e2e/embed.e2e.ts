@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { find, growTo } from './helpers';
 
-// embed-demo.html: two <pocket-cube-explorer> elements in a page that stands in for a blog post.
-// Locators pierce their shadow roots, scoped to one element because both use the same ids inside.
+// embed-demo.html: <pocket-cube-explorer> elements in a page that stands in for a blog post.
+// Locators pierce their shadow roots, scoped to one element because they use the same ids inside.
 test('embeds as a web component, isolated from the page and from each other', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
@@ -10,46 +11,62 @@ test('embeds as a web component, isolated from the page and from each other', as
   await narrow.scrollIntoViewIfNeeded();
   await expect(narrow.locator('#btnGrow')).toBeEnabled();
 
-  // in the text column it stacks: no title bar (no-header), the panel below the stage
-  await expect(narrow.locator('.bar')).toBeHidden();
-  const stage = (await narrow.locator('#stage').boundingBox())!, panel = (await narrow.locator('.panel').boundingBox())!;
-  expect(panel.y).toBeGreaterThanOrEqual(stage.y + stage.height - 1);
-  // its own fonts and colours, not the page's serif text
+  // in the text column it keeps its height, with no title of its own (no-header)
+  await expect(narrow.locator('.title')).toBeHidden();
+  expect(Math.round((await narrow.locator('.app').boundingBox())!.height)).toBe(720);
+  // its own fonts, not the page's serif text
   expect(await narrow.locator('.app').evaluate(e => getComputedStyle(e).fontFamily)).toContain('Instrument Sans');
   expect(await page.locator('main p').first().evaluate(e => getComputedStyle(e).fontFamily)).toContain('Georgia');
 
-  // it works
-  await narrow.locator('#optPace').uncheck();
-  await narrow.locator('#btnGrow').click();
-  await expect(narrow.locator('#btnGrow')).toHaveText('Grow layer 2');
-  await narrow.locator('#btnGrow').click();
+  // it works; in a column this narrow the drawer covers the stage and the card steps back
+  await growTo(narrow, 2);
   await expect(narrow.locator('#statStates')).toHaveText('34');
-  await narrow.locator('#stateInput').fill('R U');
-  await narrow.locator('#findForm button[type=submit]').click();
+  await find(narrow, 'R U');
   await expect(narrow.locator('#cbDepth')).toHaveText('2');
+  await expect(narrow.locator('#tools')).toBeVisible();
+  await expect(narrow.locator('#card')).toBeHidden();
 
-  // Esc in its search box is for the box (the key's real target is found inside the shadow root)
+  // Esc in its search box closes the drawer and keeps the selection (the key's real target is found
+  // inside the shadow root)
   await narrow.locator('#stateInput').press('Escape');
+  await expect(narrow.locator('#tools')).toBeHidden();
+  await expect(narrow.locator('#card')).toBeVisible();
   await expect(narrow.locator('#routesNote')).not.toContainText('No state selected');
   // Esc elsewhere on the page does nothing
   await page.locator('main > h1').click();
   await page.keyboard.press('Escape');
   await expect(narrow.locator('#routesNote')).not.toContainText('No state selected');
   // Esc with the pointer over its stage deselects
-  await narrow.locator('#graph').hover();
+  await narrow.locator('#graph').hover({ position: { x: 60, y: 200 } });
   await page.keyboard.press('Escape');
   await expect(narrow.locator('#routesNote')).toContainText('No state selected');
 
-  // the second explorer starts when it scrolls into view, with its own state
+  // the second explorer starts when it scrolls into view, with its own state and its own height
   await wide.scrollIntoViewIfNeeded();
-  await expect(wide.locator('#btnGrow')).toHaveText('Grow layer 1');
+  await expect(wide.locator('#btnGrow')).toHaveText('Add layer 1');
   await expect(wide.locator('#statStates')).toHaveText('1');
-  await expect(wide.locator('.bar')).toBeVisible();
+  await expect(wide.locator('.title')).toBeVisible();
   expect(Math.round((await wide.locator('.app').boundingBox())!.height)).toBe(640);
 
   // removing it stops it cleanly
   await page.locator('#remove').click();
-  await expect(page.locator('pocket-cube-explorer')).toHaveCount(1);
+  await expect(page.locator('pocket-cube-explorer')).toHaveCount(2);
   await page.waitForTimeout(500);
+  expect(errors).toEqual([]);
+});
+
+test('an embed can limit the layers and show fewer controls', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto('/embed-demo.html');
+  const small = page.locator('#small');
+  await small.scrollIntoViewIfNeeded();
+  await expect(small.locator('#btnGrow')).toBeEnabled();
+  await expect(small.locator('#btnTools')).toBeHidden(); // controls="minimal"
+  await expect(small.locator('#btnKey')).toBeHidden();
+  await growTo(small, 2);                                // max-layers="2"
+  await expect(small.locator('#btnGrow')).toHaveText('All 2 layers shown');
+  await expect(small.locator('#btnGrow')).toBeDisabled();
+  await expect(small.locator('#growNote')).toHaveText('The full explorer shows all 14');
   expect(errors).toEqual([]);
 });
