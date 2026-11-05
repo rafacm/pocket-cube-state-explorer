@@ -96,3 +96,7 @@ Plain JavaScript in one HTML file, no build step:
   (Edd Mann) — finds and animates the shortest solution for any 2x2x2 state
 - [Visualization of Rubik's Cube Solution Algorithms](https://research.jku.at/en/activities/visualization-of-rubiks-cube-solution-algorithms/)
   (Johannes Kepler University Linz) — a research talk on visualising how solution methods work
+
+## License
+
+[MIT](LICENSE) © 2026 Rafael Cordones.
