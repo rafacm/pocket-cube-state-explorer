@@ -96,8 +96,8 @@ try {
   await page.locator('#statBusy').waitFor({ state: 'hidden', timeout: 120_000 }).catch(() => {});
   await page.waitForTimeout(8000); // let the camera settle and the labels appear
   mkdirSync(dirname(out), { recursive: true });
-  if (args.includes('--stage')) await page.locator('#stage').screenshot({ path: out });
-  else await page.screenshot({ path: out });
+  if (args.includes('--stage')) await page.locator('#stage').screenshot({ path: out, timeout: 300_000 });
+  else await page.screenshot({ path: out, timeout: 300_000 });
   console.log(`${secs()}: saved ${out}`);
 } catch (e) {
   ok = false;
