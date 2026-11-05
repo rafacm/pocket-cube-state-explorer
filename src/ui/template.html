@@ -9,17 +9,18 @@
     <section class="stage" id="stage" aria-label="3D graph of cube states">
       <canvas id="graph"></canvas>
       <div class="labels" id="labels"></div>
-      <div class="overlay hint" id="hint">Drag: orbit · <kbd id="panKey">Ctrl</kbd> or <kbd>Space</kbd> + drag: pan · Scroll: zoom toward pointer · Click: select a state · Click empty space or Esc: deselect · Double-click: fly close · Up close, dots become cubes</div>
+      <div class="overlay hint" id="hint"><span class="hint-mouse">Drag: orbit · <kbd id="panKey">Ctrl</kbd> or <kbd>Space</kbd> + drag: pan · Scroll: zoom toward pointer · Click: select a state · Click empty space or Esc: deselect · Double-click: fly close · Up close, dots become cubes</span><span class="hint-touch">Drag: orbit · Pinch: zoom · Two fingers: pan · Tap: select a state · Tap empty space: deselect · Up close, dots become cubes</span></div>
       <div class="overlay stat"><b id="statStates">1</b><span id="statEdges">states · 0 links</span><span id="statLoops"></span><span id="statDetail"></span><span class="busy" id="statBusy" hidden></span></div>
       <div class="overlay legend">
         <span class="k"><span class="ln" style="background:var(--e-U)"></span>U turn</span>
         <span class="k"><span class="ln" style="background:var(--e-R)"></span>R turn</span>
         <span class="k"><span class="ln" style="background:var(--e-F)"></span>F turn</span>
         <span class="k"><span class="ln faint" style="background:var(--stage-ink)"></span>faint: extra link, closes a loop</span>
-        <span class="k"><span class="ln" style="background:var(--stage-muted)"></span>bundled links (outer layers)</span>
-        <span class="k"><span class="ln thick" style="background:var(--route1)"></span>routes to the current state</span>
+        <span class="k" id="legBundles" hidden><span class="ln" style="background:var(--stage-muted)"></span>bundled links (outer layers)</span>
+        <span class="k" id="legRoute" hidden><span class="ln thick" style="background:var(--route1)"></span>routes to the current state</span>
       </div>
       <div class="overlay tip" id="tip" hidden></div>
+      <div class="overlay lost" id="lost" role="alert" hidden><p id="lostText"></p><button class="btn btn-sm" id="btnRestart" type="button" hidden>Start the explorer again</button></div>
     </section>
 
     <aside class="panel">
@@ -85,6 +86,10 @@
         </div>
         <p class="note" id="growNote"></p>
         <label class="toggle"><input type="checkbox" id="optHalf"><span>Count half turns (U2, R2, F2) as one move</span></label>
+        <div class="confirm" id="halfConfirm" role="alertdialog" aria-labelledby="halfConfirmText" hidden>
+          <p id="halfConfirmText"></p>
+          <div class="row"><button class="btn btn-primary btn-sm" id="btnHalfYes" type="button">Start over</button><button class="btn btn-sm" id="btnHalfNo" type="button">Cancel</button></div>
+        </div>
         <label class="toggle"><input type="checkbox" id="optPace" checked><span>Animate the outer layers, about 5 s each (off: as fast as your computer allows)</span></label>
         <label class="toggle"><input type="checkbox" id="optLabels" checked><span id="labelsText">Label every link with its turn</span></label>
       </section>

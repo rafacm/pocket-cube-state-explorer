@@ -20,3 +20,8 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 1
 .bar p { margin: 0; color: var(--muted); font-size: 14px; min-width: 0; }
 
 .work { display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 0; }
+.nogl { display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; background: var(--stage); color: var(--stage-ink); }
+.nogl-box { max-width: 620px; text-align: center; }
+.nogl-box h2 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+.nogl-box p { margin: 8px 0; color: var(--muted); }
+.nogl-box img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); margin: 8px 0; }

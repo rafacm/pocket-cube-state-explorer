@@ -60,7 +60,7 @@ export function createGraphScene(canvas: HTMLCanvasElement, theme: Theme, reduce
   controls.enableDamping = true; controls.dampingFactor = 0.08;
   controls.minDistance = 12; controls.maxDistance = 90000;
   controls.autoRotate = !reducedMotion; controls.autoRotateSpeed = 0.55;
-  controls.enableZoom = false; // the wheel zooms toward the pointer instead (render/navigation.ts)
+  controls.enableZoom = false; // on for touch only: the wheel zooms toward the pointer (render/navigation.ts)
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
   const stickArr = new Float32Array(CAP * 4);

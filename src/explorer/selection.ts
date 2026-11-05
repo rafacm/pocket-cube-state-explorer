@@ -46,6 +46,11 @@ export function onState(x: Explorer): void {
 export function computeHighlight(x: Explorer): void {
   const s = x.sel, hl: typeof s.highlight = [];
   s.highlight = hl;
+  fillHighlight(x, hl);
+  x.el.legRoute.hidden = hl.length === 0; // the legend lists only what is on screen
+}
+function fillHighlight(x: Explorer, hl: Explorer['sel']['highlight']): void {
+  const s = x.sel;
   if (!s.on) return;
   if (s.loop) {
     const { A, B, k } = s.loop;

@@ -84,7 +84,8 @@ import each other freely (only functions, nothing runs at import time).
 ## Rendering and layout decisions (and why)
 
 - Layers 0–7 (0–5 with half turns) are real objects with links and a force layout; outer layers are
-  `THREE.Points` with typed arrays (`Dots`: `dist/map/codes/parent/pos/pin/col/patch`, ≈80 MB).
+  `THREE.Points` with typed arrays (`Dots`: `dist/map/codes/parent/pos/pin/col/patch`, about 120 MB
+  with all 14 layers, plus about 55 MB of GPU buffers).
 - Radii: every layer's sphere is sized for its states (cube layers 11.25 units apart, dot layers 9 in
   their most crowded patch), and grows ≥ 1.25× per layer. The first dot layer is evened out once
   (`evenOut`): evening out every layer pushed states thousands of units from their parents.
@@ -109,6 +110,11 @@ import each other freely (only functions, nothing runs at import time).
 ## Pitfalls hit before
 
 - OrbitControls `update()` returns whether the camera moved; on-demand drawing relies on that.
+- OrbitControls' `enableZoom` also governs pinch-zoom on touch. It is switched on only for touch
+  pointers (a capture-phase `pointerdown`), and the wheel handler, also capture-phase, switches it off,
+  so the wheel keeps zooming toward the pointer without OrbitControls zooming as well.
+- WebGL contexts can be lost at any time; three.js restores the scene when the context comes back,
+  and the explorer offers to restart if it does not (`createExplorer` restarts in place).
 - Typed scratch buffers at module level (layout hash, relax hash, detail candidates) are shared by
   all explorers on a page; that is safe only because each use finishes within one synchronous call.
 - Vite's library mode keeps whitespace in ES output; the embed config forces full minification.

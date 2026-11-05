@@ -37,7 +37,50 @@ export interface ExplorerHandle {
   destroy(): void;
 }
 
+/** Can this browser draw with WebGL at all? (A throwaway canvas, released at once.) */
+export function webglAvailable(): boolean {
+  try {
+    const c = document.createElement('canvas');
+    const gl = (c.getContext('webgl2') || c.getContext('webgl')) as WebGLRenderingContext | null;
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const SITE = 'https://pocket-cube-state-explorer.vercel.app';
+/** What shows instead of the explorer when the browser cannot draw it. */
+function showNoWebGL(container: HTMLElement, why: string): ExplorerHandle {
+  container.innerHTML = `<div class="pcse"><div class="app nogl" role="alert">
+    <div class="nogl-box">
+      <h2>This explorer needs 3D graphics</h2>
+      <p>${why} Try a recent Chrome, Edge, Firefox or Safari with hardware acceleration turned on.</p>
+      <img src="${SITE}/og.jpg" alt="What the explorer shows: the solved cube and the states one and two turns away, joined by links labelled with their turns." width="600" height="315">
+      <p><a href="${SITE}/" target="_blank" rel="noopener">Open the Pocket Cube State Explorer</a></p>
+    </div>
+  </div></div>`;
+  return { destroy() { container.innerHTML = ''; } };
+}
+
 export function createExplorer(container: HTMLElement, options: ExplorerOptions = {}): ExplorerHandle {
+  let inner: ExplorerHandle | null = null;
+  const start = () => {
+    if (!webglAvailable()) { inner = showNoWebGL(container, 'Your browser has WebGL (3D graphics) turned off or unavailable, so the graph of 3,674,160 cube states cannot be drawn here.'); return; }
+    try {
+      inner = mount(container, options, restart);
+    } catch (err) {
+      console.error('Pocket Cube State Explorer could not start', err);
+      inner = showNoWebGL(container, 'The explorer could not start its 3D graphics on this device.');
+    }
+  };
+  const restart = () => { inner?.destroy(); inner = null; start(); };
+  start();
+  return { destroy() { inner?.destroy(); inner = null; } };
+}
+
+function mount(container: HTMLElement, options: ExplorerOptions, restart: () => void): ExplorerHandle {
   container.innerHTML = template;
   const el = findElements(container);
   const theme = readTheme(container);
@@ -84,6 +127,33 @@ export function createExplorer(container: HTMLElement, options: ExplorerOptions 
   ro.observe(el.stage); ro.observe(el.cubebox);
   x.cleanup.push(() => ro.disconnect());
   resize();
+
+  // The browser may take the GPU away (memory pressure on phones, a driver reset, a long time in the
+  // background). Three.js restores the scene by itself when the context comes back; if it does not,
+  // offer to start the explorer again.
+  let lostTimer = 0, lostCount = 0;
+  const onLost = (e: Event) => {
+    e.preventDefault(); // allows the context to be restored
+    lostCount++;
+    el.lostText.textContent = 'The browser reset the 3D graphics. Restoring…';
+    el.btnRestart.hidden = true; el.lost.hidden = false;
+    clearTimeout(lostTimer);
+    lostTimer = window.setTimeout(() => {
+      el.lostText.textContent = 'The 3D graphics did not come back. Starting again redraws the graph from the solved cube.';
+      el.btnRestart.hidden = false; el.btnRestart.focus();
+    }, 4000);
+  };
+  const onRestored = () => {
+    if (--lostCount > 0) return;
+    lostCount = 0; clearTimeout(lostTimer);
+    el.lost.hidden = true; x.renderDirty = true; x.cubeDirty = true;
+  };
+  for (const canvas of [el.graph, el.cube]) {
+    listen(x, canvas, 'webglcontextlost', onLost);
+    listen(x, canvas, 'webglcontextrestored', onRestored);
+  }
+  listen(x, el.btnRestart, 'click', () => restart());
+  x.cleanup.push(() => clearTimeout(lostTimer));
 
   applyView(x);
   startOver(x);
