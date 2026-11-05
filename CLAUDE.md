@@ -54,13 +54,19 @@ import each other freely (only functions, nothing runs at import time).
 - `cube/` – the live cube in the panel and its turn queue (`live-cube.ts`), Solve / Play from solved
   / Walk the loop and walk timing (`walks.ts`).
 - `ui/` – the markup (`template.html`), typed element lookup inside the container (`elements.ts`),
-  panel controls, census and totals (`panel.ts`), net and orientation (`net.ts`), routes list
-  (`routes.ts`), find a state (`find.ts`), progress line (`status.ts`).
+  the controls on the stage: help and Key pop-ups, Tools drawer and tabs, selection card, coach mark,
+  heads-up (`controls.ts`); growth bar, meter, census, totals and the drawer's settings (`panel.ts`),
+  net and orientation (`net.ts`), routes list (`routes.ts`), find a state (`find.ts`), progress line
+  (`status.ts`).
 - `explorer/` – selection and highlights (`selection.ts`), where states are drawn (`locate.ts`),
-  growing and Start over (`grow.ts`), the frame loop with on-demand drawing (`frame.ts`), settings,
+  growing, Start over, the layer cap and the out-of-memory stop (`grow.ts`), device hints and the
+  heads-up before heavy layers (`device.ts`), themes (`appearance.ts`), the frame loop with on-demand drawing (`frame.ts`), settings,
   theme (3D colours read from the CSS tokens), RNG, listeners that `destroy()` removes (`events.ts`).
 - `explorer.ts` – `createExplorer(container, { keyboard })` → `{ destroy }`. `main.ts` mounts it on
   the standalone page; `element.ts` is the web component.
+- Layout: the 3D stage fills the explorer at the height it is given; everything else floats on it
+  (`styles/controls.css`) or sits in the Tools drawer. Container queries rearrange it below 900 px
+  (the drawer covers the stage, the card steps back) and 560 px (card and drawer become bottom sheets).
 - `styles/` – `tokens.css` (on `.pcse`, the explorer's root; dark values under `data-theme="dark"`
   and `prefers-color-scheme`), `layout.css`, `stage.css`, `panel.css`, combined by
   `explorer.css`; `page.css` is only for the standalone page. The narrow layout is a container query
@@ -129,3 +135,6 @@ import each other freely (only functions, nothing runs at import time).
   Playwright config pick them up automatically.
 - Playwright locators pierce open shadow roots; scope them to one element when a page has two
   explorers (they use the same ids inside).
+- Headless Chromium counts as a device without a GPU, so the explorer shows its heads-up before the
+  outer layers; `growTo` in `e2e/helpers.ts` (and the screenshot script) accepts it. Many controls
+  live in hidden Tools tabs: open them with `openTool`, and query hidden ones by attribute, not role.

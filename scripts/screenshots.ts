@@ -20,28 +20,36 @@ const DIST = join(ROOT, 'dist');
 async function open(page: Page, url: string) {
   await page.goto(url);
   await page.locator('#btnGrow').waitFor();
-  const pace = page.locator('#optPace');
-  if (await pace.isChecked()) await pace.uncheck();
+  // outer layers appear as soon as they are arranged (Tools > View > Animate the outer layers)
+  await page.locator('#optPace').evaluate((e: HTMLInputElement) => { e.checked = false; });
 }
 async function growTo(page: Page, layers: number) {
   for (let d = 1; d <= layers; d++) {
-    const grow = page.locator('#btnGrow');
-    await page.waitForFunction((t) => { const b = document.querySelector<HTMLButtonElement>('#btnGrow'); return !!b && b.textContent === t && !b.disabled; }, `Grow layer ${d}`, { timeout: 600_000 });
-    await grow.click();
+    await page.waitForFunction((t) => { const b = document.querySelector<HTMLButtonElement>('#btnGrow'); return !!b && b.textContent === t && !b.disabled; }, `Add layer ${d}`, { timeout: 600_000 });
+    await page.locator('#btnGrow').click();
+    // software WebGL here, so the explorer gives a heads-up before the heavy layers: agree
+    if (await page.locator('#btnHeadsYes').isVisible()) await page.locator('#btnHeadsYes').click();
     console.log(`  layer ${d}`);
   }
-  await page.waitForFunction((t) => document.querySelector('#btnGrow')?.textContent !== t, `Grow layer ${layers}`, { timeout: 600_000 });
+  await page.waitForFunction((t) => document.querySelector('#btnGrow')?.textContent !== t, `Add layer ${layers}`, { timeout: 600_000 });
   await page.locator('#statBusy').waitFor({ state: 'hidden', timeout: 600_000 });
 }
-async function find(page: Page, text: string) {
+async function tools(page: Page, tab: string) {
+  if ((await page.locator('#btnTools').getAttribute('aria-expanded')) !== 'true') await page.locator('#btnTools').click();
+  await page.getByRole('tab', { name: tab, exact: true }).click();
+}
+const closeTools = (page: Page) => page.locator('#btnToolsClose').click();
+async function find(page: Page, text: string, keepTools = false) {
+  await tools(page, 'Find');
   await page.locator('#stateInput').fill(text);
   await page.locator('#findForm button[type=submit]').click();
+  if (!keepTools) await closeTools(page);
 }
-/** Waits for the camera to come to rest, then tidies up: no focus ring, no hover, panel at the top. */
+/** Waits for the camera to come to rest, then tidies up: no focus ring, no hover. */
 async function settle(page: Page, ms = 6000) {
   await page.mouse.move(1, 1);
   await page.waitForTimeout(ms);
-  await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); document.querySelector('.panel')!.scrollTop = 0; });
+  await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); });
   await page.waitForTimeout(800);
 }
 /** Zooms with the wheel over the middle of the stage (negative: in). */
@@ -100,7 +108,9 @@ const scenes: Scene[] = [
     width: 1600, height: 1000, out: shot('tree'),
     async run(page) {
       await growTo(page, 5);
+      await tools(page, 'View');
       await page.getByRole('button', { name: 'Tree only' }).click();
+      await closeTools(page);
       await settle(page, 8000);
     },
   },
@@ -113,6 +123,17 @@ const scenes: Scene[] = [
       await settle(page, 6000);
       await zoom(page, -3);
       await settle(page, 4000);
+    },
+  },
+  {
+    name: 'tools', what: 'the Tools drawer open next to a selected state: the census of all layers',
+    width: 1600, height: 1000, out: shot('tools'),
+    async run(page) {
+      await growTo(page, 4);
+      await settle(page, 6000);
+      await find(page, "R U R'", true);
+      await tools(page, 'Data');
+      await settle(page, 5000);
     },
   },
   {

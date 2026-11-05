@@ -14,33 +14,39 @@ stickers, and a large animated cube walks you along any route through the graph.
 
 ## What you can do
 
-- **Grow the graph** one layer at a time, or let Auto-grow build all 14 layers (11 with half turns).
-  The first 7 layers are drawn as stickered cubes with all their links; the outer layers stream in as
-  dots with a live count and time estimate.
-- **Select a state** by clicking it: the large cube jumps there and its shortest routes light up.
+- **Grow the graph** one layer at a time with **Add layer** (it says how many states the next layer
+  adds), or let **Auto** build all 14 layers (11 with half turns). The first 7 layers are drawn as
+  stickered cubes with all their links; the outer layers stream in as dots with a live count and time
+  estimate. On a phone or a slow device it says what a heavy layer costs before adding it.
+- **Select a state** by clicking it: a card shows it on a large 3D cube and its shortest routes light up.
   **Solve** walks it back to solved, **Play from solved** builds it up, and the camera can follow the
   cube through the graph one state per turn. Click the selected cube again for boxed labels of the
   turns you can make from it; click one to make that turn.
-- **Find a state** from a scramble (`R U R' F2`) or a facelet string (`WGWG:RRRR:GYGY:YBYB:OOOO:WBWB`),
+- **Find a state** (Tools › Find) from a scramble (`R U R' F2`) or a facelet string (`WGWG:RRRR:GYGY:YBYB:OOOO:WBWB`),
   or jump to a random one. States beyond the drawn layers are found too, with their distance and a
   shortest route.
 
 ![A scramble found in the graph: the selected cube in its box, its shortest route in pink, links labelled with their turns](docs/screenshots/routes.png)
 
-- **See that it is a graph, not a tree**: switch between all links, the tree of first routes, and the
+- **See that it is a graph, not a tree** (Tools › View): switch between all links, the tree of first routes, and the
   extra links that close loops; colour the outer dots by how many shortest routes enter each state;
   bundled links show where routes merge between the outer layers.
 
-![Tree only: the first route found to each state, six layers out from the solved cube](docs/screenshots/tree.png)
+![Tree only: the first route found to each state, five layers out from the solved cube](docs/screenshots/tree.png)
 
 - **Zoom into any region** (scroll toward the pointer; pan with Space, ⌘ or Ctrl + drag; double-click to
   fly close): nearby dots turn into cubes with their links and turn labels.
 
 ![Up close in layer 8: the dots around the selected state are drawn as stickered cubes with their links](docs/screenshots/dots-up-close.png)
 
-- **Turn the cube** with U, R, F, D, L, B and whole-cube rotations x, y, z; the 2D net and facelet
-  strings show the state, held and in canonical orientation.
-- **Light or dark**: it follows your system, or pick one under Appearance; the 3D stage, links and
+- **Turn the cube** (Tools › Turn) with U, R, F, D, L, B and whole-cube rotations x, y, z; the 2D net
+  and facelet strings show the state, held and in canonical orientation.
+- **Dig into the numbers** (Tools › Data): every layer's size, how much is drawn, the loops, and how
+  many shortest routes reach the states of each layer.
+
+![The Tools drawer open on Data, beside the selected state's card: the census of all 15 layers](docs/screenshots/tools.png)
+
+- **Light or dark**: it follows your system, or pick one under Tools › View; the 3D stage, links and
   labels change with it.
 
 ![Dark mode: a selected state with its route in pink and its turns in boxed labels](docs/screenshots/dark.png)
@@ -57,12 +63,15 @@ The explorer is also a web component. Add one script and the element:
 
 It renders inside its own shadow root, so your page's styles do not change it and its styles do not
 leak into your page. It starts when it first scrolls near the viewport, and stops (freeing its WebGL
-contexts) when it is removed from the page. A [demo page](https://pocket-cube-state-explorer.vercel.app/embed-demo.html)
-shows two of them in a blog-like layout.
+contexts) when it is removed from the page. Its controls float on the 3D view and rearrange themselves
+when it is narrow, so it keeps the height you give it at any width. A
+[demo page](https://pocket-cube-state-explorer.vercel.app/embed-demo.html) shows three of them in a
+blog-like layout.
 
-- `no-header` hides its title bar (your page has its own); `eager` starts it at once.
-- Height: `--explorer-height` (default `720px`), e.g. `style="--explorer-height: 80vh"`. Narrower than
-  860 px, the panel goes below the 3D stage and the element grows to fit.
+- `no-header` hides its title (your page has its own); `eager` starts it at once.
+- Height: `--explorer-height` (default `720px`), e.g. `style="--explorer-height: 80vh"`.
+- `max-layers="8"` stops readers after that many layers; `controls="minimal"` shows only the growth
+  bar, the selected state and help; `tools="open"` opens the Tools drawer at the start.
 - `data-theme="light"` or `"dark"` fixes its colour theme, 3D stage included (default: the system's);
   change the attribute and it recolours at once. The design tokens are CSS custom properties on its
   root, set per theme in `src/styles/tokens.css`.
