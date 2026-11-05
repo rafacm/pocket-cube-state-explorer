@@ -41,6 +41,10 @@ stickers, and a large animated cube walks you along any route through the graph.
 
 - **Turn the cube** (Tools › Turn) with U, R, F, D, L, B and whole-cube rotations x, y, z; the 2D net
   and facelet strings show the state, held and in canonical orientation.
+- **Use the keyboard**: U R F D L B turn a face and walk the cube to the neighbouring state, Shift
+  turns it the other way (U′, R′ …), X Y Z turn the whole cube and Backspace undoes; the arrow keys
+  turn the graph around, + and − zoom, 0 shows all of it and Enter flies to the selected state.
+  The (?) help lists them all.
 - **Dig into the numbers** (Tools › Data): every layer's size, how much is drawn, the loops, and how
   many shortest routes reach the states of each layer.
 

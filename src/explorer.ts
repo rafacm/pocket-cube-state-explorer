@@ -16,6 +16,7 @@ import { createGraphScene, disposeGraphScene } from './render/scene';
 import { createDetail } from './render/detail';
 import { createLabels } from './render/labels';
 import { bindNavigation } from './render/navigation';
+import { bindKeyboard } from './explorer/keyboard';
 import { bindPicking } from './render/picking';
 import { createLiveCube, disposeLiveCube, paintCube } from './cube/live-cube';
 import { createBundles } from './outer/bundles';
@@ -138,6 +139,7 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
   paintCube(x, x.cube.key);
 
   bindNavigation(x, { keyboard: options.keyboard ?? 'explorer' });
+  bindKeyboard(x, { keyboard: options.keyboard ?? 'explorer' });
   bindPicking(x);
   bindControls(x);
   bindPanel(x);

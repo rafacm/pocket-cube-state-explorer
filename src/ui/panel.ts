@@ -22,6 +22,9 @@ function padButton(x: Explorer, mv: Move): HTMLButtonElement {
   btn.type = 'button'; btn.className = mv.kind === 'rot' ? 'mv rot' : 'mv';
   btn.setAttribute('aria-label', (mv.kind === 'rot' ? 'Rotate the whole cube ' : 'Turn ') + mv.name);
   btn.innerHTML = (mv.kind === 'rot' ? '' : '<span class="sw" style="--sw:var(--c-' + FACE_NAME[mv.face] + ')"></span>') + mv.name;
+  // the key that makes the same turn: the letter, with Shift for a prime (U', x')
+  const letter = mv.name[0].toUpperCase();
+  btn.title = mv.q === 2 ? 'Key: ' + letter + ' twice' : mv.name.endsWith("'") ? 'Key: Shift+' + letter : 'Key: ' + letter;
   btn.addEventListener('click', () => queueMove(x, mv));
   return btn;
 }

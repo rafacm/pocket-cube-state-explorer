@@ -1,7 +1,7 @@
 // What the live cube plays: single turns from the pad, Solve, Play from solved and Walk the loop.
 // Walk timing: with the camera following, each step is: turn the cube, then fly to the new state,
 // then the next turn. The speed slider scales both.
-import { ROT_MOVES, SOLVED, canonical, encodeKey, ensureTables, inverseOf, type Key, type Move } from '../model';
+import { ROT_MOVES, SOLVED, canonical, encodeKey, ensureTables, inverseOf, invertMove, type Key, type Move } from '../model';
 import { edgeBetween, moveAlong } from '../graph/graph';
 import { routeMoves, routes } from '../graph/routes';
 import type { Explorer } from '../explorer/types';
@@ -16,12 +16,23 @@ function walkTurn(x: Explorer): number { return (x.el.optFollow.checked ? 900 : 
 /** How long the camera takes to fly to the next state of a walk. */
 export function walkFly(x: Explorer): number { return 1200 * speedF(x); }
 
-/** A turn from the pad, as held. */
+/** A turn by hand (the pad or a key), as held; it can be undone. */
 export function queueMove(x: Explorer, mv: Move): void {
   if (x.cube.queue.length >= 3) return;
   clearLoop(x);
   x.cube.queue.push({ mv, dur: mv.kind === 'rot' ? 380 : 300 });
+  x.cube.history.push(mv);
 }
+/** Undoes the last turn made by hand. */
+export function undoTurn(x: Explorer): void {
+  const h = x.cube.history;
+  if (!h.length || x.cube.queue.length >= 3) return;
+  const mv = invertMove(h.pop()!);
+  clearLoop(x);
+  x.cube.queue.push({ mv, dur: mv.kind === 'rot' ? 380 : 300 });
+}
+/** Anything but a turn by hand moves the cube: there is nothing left to undo. */
+export const forgetTurns = (x: Explorer): void => { x.cube.history.length = 0; };
 // moves in the graph are meant for the canonical orientation: rotate there first
 function pushReorient(x: Explorer): Key {
   const c = canonical(x.cube.key);
@@ -29,9 +40,9 @@ function pushReorient(x: Explorer): Key {
   return c.key;
 }
 /** A turn along a link of the graph (a clicked turn label). */
-export function queueGraphMove(x: Explorer, mv: Move): void { if (busy(x)) return; clearLoop(x); pushReorient(x); x.cube.queue.push({ mv, dur: 300 }); }
+export function queueGraphMove(x: Explorer, mv: Move): void { if (busy(x)) return; clearLoop(x); forgetTurns(x); pushReorient(x); x.cube.queue.push({ mv, dur: 300 }); }
 /** Rotates the cube into the canonical orientation. */
-export function normalize(x: Explorer): void { if (busy(x)) return; clearLoop(x); pushReorient(x); }
+export function normalize(x: Explorer): void { if (busy(x)) return; clearLoop(x); forgetTurns(x); pushReorient(x); }
 
 // queue a walk: one turn per step, and when the camera follows, a pause for its flight after each turn
 function pushWalk(x: Explorer, moves: readonly Move[]): void {
@@ -42,7 +53,7 @@ function pushWalk(x: Explorer, moves: readonly Move[]): void {
 /** Solve: play a shortest route back to solved (from any state), turn by turn. */
 export function goHome(x: Explorer): void {
   if (busy(x) || x.cube.key === SOLVED) return;
-  clearLoop(x);
+  clearLoop(x); forgetTurns(x);
   const ck = canonical(x.cube.key).key, cur = x.graph.byKey.get(ck);
   if (cur) {
     pushReorient(x);
@@ -69,6 +80,7 @@ export function walkLoop(x: Explorer): void {
   const A = rs[0], B = rs[1];
   let k = 0; while (A[k] === B[k]) k++;
   x.sel.loop = { A, B, k, n: sel, len: 2 * (A.length - k) };
+  forgetTurns(x);
   pushReorient(x);
   const back: Move[] = []; for (let i = B.length - 1; i >= k; i--) back.push(moveAlong(edgeBetween(B[i], B[i - 1])!, B[i]));
   pushWalk(x, back);
@@ -80,7 +92,7 @@ export function walkLoop(x: Explorer): void {
 
 /** Select a state: the cube jumps there at once; Solve or Play from solved then walk the route. */
 export function jumpTo(x: Explorer, key: Key): void {
-  x.cube.queue.length = 0; clearLoop(x); x.cam.flyWhenDone = false;
+  x.cube.queue.length = 0; clearLoop(x); x.cam.flyWhenDone = false; forgetTurns(x);
   x.cube.queue.push({ set: key });
 }
 
@@ -93,7 +105,7 @@ export function playFromSolved(x: Explorer): void {
   else if (s.dot) route = s.dot.route;
   else if (s.free) route = s.free.route;
   if (!route || !route.length) return;
-  clearLoop(x);
+  clearLoop(x); forgetTurns(x);
   x.cube.queue.push({ set: SOLVED }, { wait: 300 });
   pushWalk(x, route);
   for (let i = c.seq.length - 1; i >= 0; i--) {

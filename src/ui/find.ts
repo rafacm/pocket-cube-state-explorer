@@ -5,6 +5,7 @@ import { clearLoop } from '../explorer/selection';
 import { routeFromSolved } from '../explorer/locate';
 import { listen } from '../explorer/events';
 import { busy } from '../cube/live-cube';
+import { forgetTurns } from '../cube/walks';
 
 /** Selects the state `held` (as held): the cube jumps there and the camera flies to it if it is drawn. */
 export function findState(x: Explorer, held: Key, label: string): void {
@@ -28,6 +29,7 @@ export function findState(x: Explorer, held: Key, label: string): void {
     note.textContent = (label ? label + ': ' : '') + (d === 0 ? 'that is the solved cube.' :
       d + (x.halfTurns ? (d === 1 ? ' move' : ' moves') : (d === 1 ? ' quarter turn' : ' quarter turns')) + ' from solved. Its shortest route is highlighted in the graph' +
       (drawn ? '' : ' as far as the graph is drawn') + '. Press Solve to walk it back, or Play from solved to watch it being built.');
+    forgetTurns(x);
     x.cube.queue.push({ set: held });
     x.cam.flyWhenDone = !!drawn;
   });
