@@ -29,7 +29,7 @@
 .stat .busy i { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: var(--stage-border); overflow: hidden; }
 .stat .busy i b { display: block; height: 100%; width: 0; background: var(--route1); }
 .tip {
-  background: var(--stage-chip); border: 1px solid var(--stage-border); border-radius: 6px; box-shadow: 0 2px 8px rgba(30,34,48,0.08);
+  background: var(--stage-chip); border: 1px solid var(--stage-border); border-radius: 6px; box-shadow: 0 2px 8px var(--stage-shadow);
   padding: 5px 8px; font-family: var(--font-mono); font-size: 12px; white-space: nowrap; z-index: 3;
 }
 .tip .d { color: var(--stage-muted); margin-right: 6px; }
@@ -38,16 +38,16 @@
 .lab {
   position: absolute; left: 0; top: 0; will-change: transform;
   font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; line-height: 1.3;
-  padding: 0 4px; border-radius: 4px; background: rgba(246, 244, 239, 0.82); color: var(--lc); white-space: nowrap;
+  padding: 0 4px; border-radius: 4px; background: var(--label-bg); color: var(--lc); white-space: nowrap;
 }
 .lab.sel {
-  z-index: 2; font-size: 13px; padding: 2px 7px; border: 1.5px solid var(--lc); background: #FFFFFF; color: var(--stage-ink);
-  pointer-events: auto; cursor: pointer; box-shadow: 0 1px 4px rgba(30,34,48,0.12);
+  z-index: 2; font-size: 13px; padding: 2px 7px; border: 1.5px solid var(--lc); background: var(--label-sel-bg); color: var(--stage-ink);
+  pointer-events: auto; cursor: pointer; box-shadow: 0 1px 4px var(--stage-shadow);
 }
-.lab.sel:hover { background: var(--lc); color: #FFFFFF; }
+.lab.sel:hover { background: var(--lc); color: var(--stage); }
 .lost {
   inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  background: rgba(246, 244, 239, 0.86); color: var(--stage-ink); font-size: 14px; pointer-events: auto; z-index: 4; text-align: center; padding: 24px;
+  background: color-mix(in srgb, var(--stage) 86%, transparent); color: var(--stage-ink); font-size: 14px; pointer-events: auto; z-index: 4; text-align: center; padding: 24px;
 }
 .lost p { margin: 0; max-width: 40ch; }
 .lost[hidden] { display: none; }

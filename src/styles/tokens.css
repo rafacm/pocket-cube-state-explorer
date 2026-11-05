@@ -1,5 +1,7 @@
-/* Design tokens. On :root for the standalone page, on :host inside <pocket-cube-explorer>. */
-:root, :host {
+/* Design tokens, on the explorer's root (.pcse) so each explorer can follow its own theme: the system's
+   (default), or data-theme="light" / "dark" on .pcse, which the explorer sets from its theme setting.
+   src/explorer/theme.ts reads the stage, cube, link and route colours from here for the 3D scenes. */
+.pcse {
   --bg: #ECEEF3;
   --surface: #FFFFFF;
   --ink: #151922;
@@ -7,13 +9,17 @@
   --line: #D4D9E2;
   --accent: #D31F6C;
   --accent-ink: #FFFFFF;
-  /* the stage is paper white in both themes, by request */
+  /* the 3D stage: paper white */
   --stage: #F6F4EF;
   --stage-ink: #1E2230;
   --stage-muted: #6B7080;
   --stage-chip: rgba(255, 255, 255, 0.88);
   --stage-border: rgba(30, 34, 48, 0.14);
-  /* cube sticker colors: physical object colors, identical in both themes */
+  --stage-shadow: rgba(30, 34, 48, 0.10);
+  /* turn labels on the links, and the clickable ones around the selected cube */
+  --label-bg: rgba(246, 244, 239, 0.82);
+  --label-sel-bg: #FFFFFF;
+  /* cube sticker colors: physical object colors, the same in both themes */
   --cube-body: #16181D;
   --c-U: #F4F5F7; --c-D: #FFD200; --c-R: #D0263B; --c-L: #FF6A13; --c-F: #10A05C; --c-B: #1E63D8;
   /* graph edge colors, drawn on the stage */
@@ -23,14 +29,32 @@
   --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
   --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
 }
+
+/* Dark: a deep blue-grey stage; cube bodies darker than the stage so their outlines stay visible;
+   links and routes lighter and more saturated so they read on it. Stickers keep their colours. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]), :host(:not([data-theme="light"])) {
+  .pcse:not([data-theme="light"]) {
     --bg: #0E1117; --surface: #151922; --ink: #E5E8EE; --muted: #8C95A7; --line: #262C38;
-    --accent: #FF4F9A; --accent-ink: #16060D; color-scheme: dark;
+    --accent: #FF4F9A; --accent-ink: #16060D;
+    --stage: #12151B; --stage-ink: #E3E6EC; --stage-muted: #9AA1B0;
+    --stage-chip: rgba(21, 25, 34, 0.88); --stage-border: rgba(227, 230, 236, 0.16); --stage-shadow: rgba(0, 0, 0, 0.35);
+    --label-bg: rgba(18, 21, 27, 0.82); --label-sel-bg: #1B202A;
+    --cube-body: #050608;
+    --e-U: #A3ABBA; --e-R: #FF5C70; --e-F: #2FC58A;
+    --route1: #FF4F9A; --route2: #7A93FF;
+    color-scheme: dark;
   }
 }
-:root[data-theme="dark"], :host([data-theme="dark"]) {
+.pcse[data-theme="dark"] {
   --bg: #0E1117; --surface: #151922; --ink: #E5E8EE; --muted: #8C95A7; --line: #262C38;
-  --accent: #FF4F9A; --accent-ink: #16060D; color-scheme: dark;
+  --accent: #FF4F9A; --accent-ink: #16060D;
+  --stage: #12151B; --stage-ink: #E3E6EC; --stage-muted: #9AA1B0;
+  --stage-chip: rgba(21, 25, 34, 0.88); --stage-border: rgba(227, 230, 236, 0.16); --stage-shadow: rgba(0, 0, 0, 0.35);
+  --label-bg: rgba(18, 21, 27, 0.82); --label-sel-bg: #1B202A;
+  --cube-body: #050608;
+  --e-U: #A3ABBA; --e-R: #FF5C70; --e-F: #2FC58A;
+  --route1: #FF4F9A; --route2: #7A93FF;
+  color-scheme: dark;
 }
