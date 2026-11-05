@@ -55,6 +55,8 @@ export function refreshUI(x: Explorer): void {
   }
   renderCensus(x);
   renderRoutesIn(x);
+  // the legend lists only what is on screen
+  el.legBundles.hidden = !(x.bundles.tree.n + x.bundles.extra.n > 0 && el.optBundles.checked);
   onState(x);
 }
 
@@ -124,12 +126,29 @@ export function bindPanel(x: Explorer): void {
     el.pinLegend.hidden = x.colorMode !== 'routes';
     repaintAll(x);
   }));
-  listen(x, el.optBundles, 'change', () => applyView(x));
+  listen(x, el.optBundles, 'change', () => { applyView(x); el.legBundles.hidden = !(x.bundles.tree.n + x.bundles.extra.n > 0 && el.optBundles.checked); });
   listen(x, el.btnGrow, 'click', () => { grow(x); });
   listen(x, el.btnAuto, 'click', () => setAuto(x, !x.growth.auto));
   listen(x, el.btnReset, 'click', () => { setAuto(x, false); startOver(x); });
   listen(x, el.btnHome, 'click', () => { if (busy(x)) { x.cube.queue.length = 0; x.cam.flyWhenDone = false; } else goHome(x); });
-  listen(x, el.optHalf, 'change', () => { x.halfTurns = el.optHalf.checked; setAuto(x, false); startOver(x); });
+  // Switching the metric builds a different graph, so it starts over: ask first when layers are drawn.
+  const applyHalf = (on: boolean) => {
+    el.halfConfirm.hidden = true; el.optHalf.checked = on;
+    x.halfTurns = on; setAuto(x, false); startOver(x);
+  };
+  listen(x, el.optHalf, 'change', () => {
+    const want = el.optHalf.checked, d = x.graph.depthShown;
+    if (d === 0) { applyHalf(want); return; }
+    el.optHalf.checked = !want;
+    el.halfConfirm.dataset.want = want ? 'half' : 'quarter';
+    el.halfConfirmText.textContent = (want ? 'Counting half turns as one move' : 'Counting quarter turns only') +
+      ' builds a different graph, so this starts over and clears the ' + (d === 1 ? 'layer' : d + ' layers') + ' drawn now.';
+    el.btnHalfYes.textContent = want ? 'Start over with half turns' : 'Start over with quarter turns';
+    el.halfConfirm.hidden = false;
+    el.btnHalfYes.focus();
+  });
+  listen(x, el.btnHalfYes, 'click', () => applyHalf(el.halfConfirm.dataset.want === 'half'));
+  listen(x, el.btnHalfNo, 'click', () => { el.halfConfirm.hidden = true; el.optHalf.focus(); });
   listen(x, el.optLabels, 'change', () => { x.labelAll = el.optLabels.checked; x.labels.dirty = true; });
   listen(x, el.btnNorm, 'click', () => normalize(x));
   listen(x, el.btnLoop, 'click', () => {

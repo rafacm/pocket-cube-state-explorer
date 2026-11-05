@@ -4,6 +4,8 @@
 .stage canvas.pointing { cursor: pointer; }
 .stage canvas.pan { cursor: grab; }
 .stage canvas.pan:active { cursor: grabbing; }
+.hint-touch { display: none; }
+@media (pointer: coarse) { .hint-mouse { display: none; } .hint-touch { display: inline; } }
 .hint kbd { font-family: inherit; font-size: 10.5px; padding: 0 4px; border: 1px solid var(--stage-border); border-radius: 3px; background: var(--stage-chip); color: var(--stage-ink); }
 .overlay { position: absolute; font-size: 12px; pointer-events: none; }
 .hint { top: 12px; left: max(14px, env(safe-area-inset-left, 0px)); right: 250px; color: var(--stage-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; }
@@ -43,3 +45,9 @@
   pointer-events: auto; cursor: pointer; box-shadow: 0 1px 4px rgba(30,34,48,0.12);
 }
 .lab.sel:hover { background: var(--lc); color: #FFFFFF; }
+.lost {
+  inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(246, 244, 239, 0.86); color: var(--stage-ink); font-size: 14px; pointer-events: auto; z-index: 4; text-align: center; padding: 24px;
+}
+.lost p { margin: 0; max-width: 40ch; }
+.lost[hidden] { display: none; }
