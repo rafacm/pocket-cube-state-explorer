@@ -1,0 +1,17 @@
+/* All of the explorer's styles: the standalone page imports this file, <pocket-cube-explorer> puts it in
+   its shadow root. Nothing here styles the page around the explorer. */
+@import './tokens.css';
+@import './layout.css';
+@import './stage.css';
+@import './panel.css';
+
+/* narrow: the panel goes below the stage (a container query, so it also applies in a narrow column) */
+@container (max-width: 860px) {
+  .app { height: auto; grid-template-rows: auto auto; }
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .stage { height: 62vh; min-height: 380px; }
+  .hint { right: 14px; top: auto; bottom: 64px; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .cubebox { max-width: 440px; }
+}
