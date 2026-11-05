@@ -23,6 +23,7 @@ import { freeDots } from './outer/dots';
 import { applyView, bindPanel } from './ui/panel';
 import { bindFind } from './ui/find';
 import { bindCopy, buildNet } from './ui/net';
+import { bindControls, setTab, setTools } from './ui/controls';
 
 export interface ExplorerOptions {
   /**
@@ -35,6 +36,14 @@ export interface ExplorerOptions {
   theme?: ThemeMode;
   /** Called after every theme change (also from the explorer's own Appearance control). */
   onThemeChange?: (mode: ThemeMode, scheme: 'light' | 'dark') => void;
+  /** The most layers readers can add (default: all 14, or 11 with half turns). */
+  maxLayers?: number;
+  /** 'full' (default) or 'minimal': only the growth bar, the selection card and help, no Tools or Key. */
+  controls?: 'full' | 'minimal';
+  /** Open the Tools drawer at the start. */
+  toolsOpen?: boolean;
+  /** Show the explorer's own title (default true; an embed in a page with its own title can hide it). */
+  header?: boolean;
 }
 
 export interface ExplorerHandle {
@@ -102,6 +111,8 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
   const el = findElements(container);
   const themeMode = options.theme ?? 'system';
   if (themeMode !== 'system') el.pcse.dataset.theme = themeMode;
+  el.pcse.classList.toggle('no-header', options.header === false);
+  el.pcse.classList.toggle('controls-minimal', options.controls === 'minimal');
   const theme = readTheme(el.pcse);
   const reducedMotion = !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gs = createGraphScene(el.graph, theme, reducedMotion);
@@ -115,7 +126,8 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
     sel: { on: true, node: null, dot: null, free: null, loop: null, highlight: [], boxKey: null, keepBox: false, boxOn: false },
     cam: { fitDist: null, flight: null, flyWhenDone: false, spaceDown: false, overStage: false },
     pointer: { hover: null, inside: false, mx: 0, my: 0, downX: 0, downY: 0, needPick: false },
-    growth: { growing: false, auto: false, settledAt: 0, busyShown: '' },
+    growth: { growing: false, auto: false, settledAt: 0, busyShown: '', maxLayers: Math.max(1, Math.round(options.maxLayers ?? 99)), agreed: new Set(), outOfMemory: false },
+    ui: { cardWanted: false, cardCollapsed: false, coachDismissed: false, toolsOpen: false, tab: 'find', frameMs: 0, slowSince: 0, slowAsked: false, headsYes: null },
     dots: null, job: null,
     bundles: createBundles(gs.scene, theme),
     detail: createDetail(gs.scene, gs.nodeMat),
@@ -127,6 +139,7 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
 
   bindNavigation(x, { keyboard: options.keyboard ?? 'explorer' });
   bindPicking(x);
+  bindControls(x);
   bindPanel(x);
   bindFind(x);
   bindCopy(x);
@@ -179,6 +192,9 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
   if (scheme) listen(x, scheme, 'change', () => { if (x.themeMode === 'system') refreshTheme(x); });
   el.themeButtons.forEach(b => b.setAttribute('aria-pressed', b.dataset.themeMode === themeMode ? 'true' : 'false'));
   x.onTheme?.(themeMode, schemeOf(el.pcse));
+
+  setTab(x, 'find');
+  if (options.toolsOpen && options.controls !== 'minimal') setTools(x, true);
 
   applyView(x);
   startOver(x);

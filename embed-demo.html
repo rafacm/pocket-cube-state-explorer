@@ -18,14 +18,17 @@
 <body>
 <main>
   <h1>Embedding the Pocket Cube State Explorer</h1>
-  <p>This page stands in for a blog post. Its own styles (serif text, plain headings and buttons) do not reach into the explorer, and the explorer's styles do not leak out. The explorer below starts when it scrolls into view.</p>
+  <p>This page stands in for a blog post. Its own styles (serif text, plain headings and buttons) do not reach into the explorer, and the explorer's styles do not leak out. Each explorer starts when it scrolls into view and keeps the height it is given; its controls float on the 3D view, and Tools opens the rest over it.</p>
   <pre><code>&lt;script type="module" src="https://pocket-cube-state-explorer.vercel.app/embed/pocket-cube-explorer.js"&gt;&lt;/script&gt;
 &lt;pocket-cube-explorer no-header&gt;&lt;/pocket-cube-explorer&gt;</code></pre>
-  <p>In the text column, narrower than 860 px, the panel sits below the 3D stage:</p>
+  <p>In the text column, without its own title:</p>
   <pocket-cube-explorer no-header id="narrow"></pocket-cube-explorer>
-  <p>Wider than the column, with the title bar and a custom height:</p>
+  <p>Wider than the column, with its title and a custom height:</p>
   <pocket-cube-explorer class="wide" id="wide" style="--explorer-height: 640px"></pocket-cube-explorer>
   <p><button type="button" id="remove">Remove the wide explorer</button> (it stops and frees its WebGL contexts).</p>
+  <p>A small one that stops after two layers and shows only the growth bar and the selected state:</p>
+  <pre><code>&lt;pocket-cube-explorer no-header max-layers="2" controls="minimal" style="--explorer-height: 420px"&gt;&lt;/pocket-cube-explorer&gt;</code></pre>
+  <pocket-cube-explorer no-header max-layers="2" controls="minimal" id="small" style="--explorer-height: 420px"></pocket-cube-explorer>
 </main>
 <script type="module">
   import '/src/element.ts';

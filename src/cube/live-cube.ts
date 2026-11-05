@@ -93,7 +93,7 @@ function startNext(x: Explorer, now: number): void {
   const c = x.cube;
   while (!c.anim && c.queue.length) {
     const item = c.queue.shift()!;
-    if ('set' in item) { c.key = item.set; paintCube(x, c.key); x.sel.on = true; onState(x); continue; }
+    if ('set' in item) { c.key = item.set; paintCube(x, c.key); x.sel.on = true; x.ui.cardWanted = true; onState(x); continue; }
     if ('wait' in item) { c.anim = { kind: 'wait', t0: now, dur: item.wait }; break; }
     const pivot = new THREE.Group(); c.root.add(pivot);
     const sel = item.mv.sel;
@@ -122,7 +122,7 @@ export function stepCube(x: Explorer, now: number): void {
     c.key = applyMove(c.key, item.mv); paintCube(x, c.key);
     c.anim = null;
     if (!c.queue.length) x.el.cbMove.classList.remove('on');
-    x.sel.on = true; onState(x);
+    x.sel.on = true; x.ui.cardWanted = true; onState(x);
     startNext(x, now);
   }
 }

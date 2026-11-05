@@ -6,6 +6,7 @@ import type { Explorer, Point } from '../explorer/types';
 import { deselect } from '../explorer/selection';
 import { fitDistance } from '../graph/radii';
 import { listen } from '../explorer/events';
+import { closeTopmost } from '../ui/controls';
 
 export interface Flyable extends Point { size?: number; dot?: boolean; dotIdx?: number }
 
@@ -61,7 +62,10 @@ export function bindNavigation(x: Explorer, opts: NavigationOptions): void {
   });
   listen(x, window, 'keydown', (e: KeyboardEvent) => {
     const t = origin(e) as HTMLElement | null;
-    if (e.key === 'Escape' && !(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) && ours(e)) deselect(x);
+    if (e.key !== 'Escape' || !ours(e)) return;
+    // Esc closes the topmost pop-up or the drawer first (also from inside it), then deselects
+    if (closeTopmost(x)) { e.preventDefault(); return; }
+    if (!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'))) deselect(x);
   });
   listen(x, window, 'keyup', (e: KeyboardEvent) => {
     if (e.code === 'Space' && x.cam.spaceDown) panMode(false);

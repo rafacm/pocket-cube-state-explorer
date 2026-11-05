@@ -4,7 +4,7 @@
 // nothing, so the GPU rests.
 import type { Explorer } from './types';
 import { tick } from '../graph/layout';
-import { stepAuto } from './grow';
+import { stepAuto, stopOutOfMemory } from './grow';
 import { finishJob, jobProgress, runJob } from '../outer/dots';
 import { stepCube } from '../cube/live-cube';
 import { writeGeometry } from '../render/scene';
@@ -19,6 +19,18 @@ import { showBusy } from '../ui/status';
 /** The automatic spin stops this long after the explorer starts. */
 const AUTO_SPIN_MS = 25000;
 
+/** Frames slower than this, for this long, while a layer streams in: offer to stop animating it. */
+const SLOW_FRAME_MS = 120, SLOW_FOR_MS = 2500;
+
+function watchFrames(x: Explorer, now: number, dt: number): void {
+  const u = x.ui;
+  u.frameMs = u.frameMs ? u.frameMs * 0.9 + dt * 0.1 : dt;
+  const streaming = !!x.job && x.el.optPace.checked;
+  if (!streaming || u.slowAsked || u.frameMs < SLOW_FRAME_MS) { u.slowSince = 0; return; }
+  if (!u.slowSince) u.slowSince = now;
+  else if (now - u.slowSince > SLOW_FOR_MS && x.el.heads.hidden) { u.slowAsked = true; x.el.slowTip.hidden = false; }
+}
+
 function frameBody(x: Explorer, now: number, startedAt: number): void {
   const g = x.graph, gs = x.gs;
   const moving = g.alpha > 0.004;
@@ -28,7 +40,9 @@ function frameBody(x: Explorer, now: number, startedAt: number): void {
     if (g.alpha <= 0.004) x.growth.settledAt = now;
   }
   if (x.job) {
-    runJob(x, 12, now);
+    try { runJob(x, 12, now); } catch (err) { stopOutOfMemory(x, err); }
+  }
+  if (x.job) {
     if (x.job.done) { finishJob(x, now); showBusy(x, null); }
     else {
       jobProgress(x, now);
@@ -62,8 +76,11 @@ function frameBody(x: Explorer, now: number, startedAt: number): void {
 /** Starts the frame loop. It keeps drawing even if one frame fails, so nothing (a label, a marker) can get stuck on screen. */
 export function startFrames(x: Explorer): void {
   const startedAt = performance.now();
+  let last = 0;
   const frame = (now: number) => {
     if (x.destroyed) return;
+    if (last) watchFrames(x, now, now - last);
+    last = now;
     try { frameBody(x, now, startedAt); } catch (err) { console.error('frame failed', err); x.renderDirty = true; }
     x.frameId = requestAnimationFrame(frame);
   };

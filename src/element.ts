@@ -4,11 +4,14 @@
 //   <pocket-cube-explorer></pocket-cube-explorer>
 //
 // It renders into a shadow root, so the page's styles and the explorer's do not mix. Attributes:
-//   no-header           hide the explorer's own title bar
+//   no-header           hide the explorer's own title
 //   eager               start at once (default: when it first comes within 200 px of the viewport)
+//   max-layers="8"      the most layers readers can add (default: all)
+//   controls="minimal"  only the growth bar, the selection card and help (no Tools, no Key)
+//   tools="open"        open the Tools drawer at the start
 //   data-theme="dark"   or "light": its colour theme, 3D stage included (default: follows the system)
-// Size it with CSS: its height is --explorer-height (default 720px); when it is narrower than 860 px
-// the panel goes below the stage and it grows to fit.
+// Size it with CSS: its height is --explorer-height (default 720px), at any width; its controls float
+// on the 3D stage and rearrange themselves when it is narrow.
 import css from './styles/explorer.css?inline';
 import { createExplorer, type ExplorerHandle } from './explorer';
 import { THEME_MODES, type ThemeMode } from './explorer/theme';
@@ -21,8 +24,6 @@ const HOST_CSS = `
 :host { display: block; position: relative; min-height: var(--explorer-height, 720px); }
 :host([hidden]) { display: none; }
 .mount { height: 100%; }
-:host([no-header]) .bar { display: none; }
-:host([no-header]) .app { grid-template-rows: minmax(0, 1fr); }
 `;
 
 // @font-face rules only work in the document, not inside a shadow root: add the fonts there once.
@@ -71,7 +72,15 @@ export class PocketCubeExplorer extends HTMLElement {
     this.#mount = document.createElement('div');
     this.#mount.className = 'mount';
     this.shadowRoot!.append(this.#mount);
-    this.#handle = createExplorer(this.#mount, { keyboard: 'explorer', theme: themeOf(this.getAttribute('data-theme')) });
+    const max = Number(this.getAttribute('max-layers'));
+    this.#handle = createExplorer(this.#mount, {
+      keyboard: 'explorer',
+      theme: themeOf(this.getAttribute('data-theme')),
+      header: !this.hasAttribute('no-header'),
+      maxLayers: max > 0 ? max : undefined,
+      controls: this.getAttribute('controls') === 'minimal' ? 'minimal' : 'full',
+      toolsOpen: this.getAttribute('tools') === 'open',
+    });
   }
 }
 

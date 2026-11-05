@@ -1,26 +1,12 @@
 /* ---------- stage ---------- */
-.stage { position: relative; background: var(--stage); min-height: 0; overflow: hidden; color: var(--stage-ink); }
+.stage { position: absolute; inset: 0; background: var(--stage); overflow: hidden; color: var(--stage-ink); }
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .stage canvas.pointing { cursor: pointer; }
 .stage canvas.pan { cursor: grab; }
 .stage canvas.pan:active { cursor: grabbing; }
-.hint-touch { display: none; }
-@media (pointer: coarse) { .hint-mouse { display: none; } .hint-touch { display: inline; } }
-.hint kbd { font-family: inherit; font-size: 10.5px; padding: 0 4px; border: 1px solid var(--stage-border); border-radius: 3px; background: var(--stage-chip); color: var(--stage-ink); }
 .overlay { position: absolute; font-size: 12px; pointer-events: none; }
-.hint { top: 12px; left: max(14px, env(safe-area-inset-left, 0px)); right: 250px; color: var(--stage-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; }
-.legend {
-  bottom: 12px; left: max(14px, env(safe-area-inset-left, 0px));
-  display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
-  background: var(--stage-chip); border: 1px solid var(--stage-border); border-radius: 8px; padding: 8px 11px;
-  max-width: calc(100% - 28px);
-}
-.legend .k { display: inline-flex; align-items: center; gap: 6px; }
-.legend .ln { width: 18px; height: 2px; border-radius: 1px; }
-.legend .ln.thick { height: 4px; }
-.legend .faint { opacity: 0.4; }
 .stat {
-  top: 12px; right: max(14px, env(safe-area-inset-right, 0px));
+  top: 14px; right: max(16px, env(safe-area-inset-right, 0px)); z-index: 2; transition: right .2s;
   text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; line-height: 1.35;
 }
 .stat b { display: block; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }

@@ -3,15 +3,33 @@
 @import './tokens.css';
 @import './layout.css';
 @import './stage.css';
+@import './controls.css';
 @import './panel.css';
 
-/* narrow: the panel goes below the stage (a container query, so it also applies in a narrow column) */
-@container (max-width: 860px) {
-  .app { height: auto; grid-template-rows: auto auto; }
-  .work { grid-template-columns: minmax(0, 1fr); }
-  .stage { height: 62vh; min-height: 380px; }
-  .hint { right: 130px; }
-  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible;
-    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .cubebox { max-width: 440px; }
+/* Mid-size (a blog column, a tablet): the drawer covers the stage instead of pushing things aside,
+   and the selection card steps back while it is open. Container queries, so they follow the
+   explorer's own width, not the window's. */
+@container (max-width: 900px) {
+  .drawer { width: min(340px, calc(100% - 24px)); }
+  .app.tools-open .card { display: none; }
+  .app.tools-open .stat, .app.tools-open .bottom { right: max(16px, env(safe-area-inset-right, 0px)); }
+  .card { width: 264px; top: 68px; }
+  .card .cubebox { height: 150px; }
+}
+/* Phone-size: the card and the drawer become sheets at the bottom; the meter gives way to the button. */
+@container (max-width: 560px) {
+  .title { display: none; }
+  .corner .btn { width: 38px; padding: 0; justify-content: center; }
+  .corner .btn .btn-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .stat b { font-size: 18px; }
+  .card { top: auto; left: 8px; right: 8px !important; bottom: 66px; width: auto; }
+  .card-body { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .card .cubebox { height: 100px; }
+  .card #btnLoop, .card #btnZoomCur { display: none; }
+  .bottom { left: 8px; right: 8px !important; bottom: 8px; }
+  .grow { padding: 6px; }
+  .meter-wrap, #btnZoomAll { display: none; }
+  .legend { right: 8px; bottom: 60px; }
+  .coach, .heads, .slow { left: 8px; bottom: 66px; width: calc(100% - 16px); }
+  .drawer { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 68%; border-radius: 16px 16px 0 0; }
 }
