@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
   FACE_NAME, SLOTS, BASE, OPP, ALL_MOVES, OPP_MOVES, ROT_MOVES, DLB, inverseOf, applyMove, SOLVED, canonical,
   NET_SLOTS, COLOR_LETTER, STRING_ORDER, faceletString,
@@ -63,7 +65,7 @@ gRenderer.setClearColor(STAGE);
 const gScene = new THREE.Scene();
 const gCam = new THREE.PerspectiveCamera(45, 1, 1, 200000);
 gCam.position.set(60, 46, 96);
-const gControls = new THREE.OrbitControls(gCam, gCanvas);
+const gControls = new OrbitControls(gCam, gCanvas);
 gControls.enableDamping = true; gControls.dampingFactor = 0.08;
 gControls.minDistance = 12; gControls.maxDistance = 90000;
 gControls.autoRotate = !RM; gControls.autoRotateSpeed = 0.55;
@@ -508,7 +510,7 @@ cRenderer.setClearColor(STAGE);
 const cScene = new THREE.Scene();
 const cCam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
 cCam.position.set(3.3, 2.75, 4.1);
-const cControls = new THREE.OrbitControls(cCam, cCanvas);
+const cControls = new OrbitControls(cCam, cCanvas);
 cControls.enablePan = false; cControls.enableZoom = false; cControls.enableDamping = true; cControls.rotateSpeed = 0.7;
 cScene.add(new THREE.AmbientLight(0xffffff, 0.62));
 const dl = new THREE.DirectionalLight(0xffffff, 0.55); dl.position.set(3, 6, 4); cScene.add(dl);
