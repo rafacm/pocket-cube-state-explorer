@@ -114,7 +114,7 @@ bun run build        # dist/: the site, plus dist/embed/pocket-cube-explorer.js
 bun run typecheck    # TypeScript, strict
 bun run test         # unit tests: the cube model, the graph, distances of all 3,674,160 states
 bun run e2e          # end-to-end tests in headless Chromium (Playwright)
-bun run screenshots  # regenerates docs/screenshots/ and public/og.jpg (the link-preview image)
+bun run screenshots  # regenerates docs/screenshots/ and site/public/og.jpg (the link-preview image)
 ```
 
 The end-to-end tests and screenshots need Playwright's Chromium (`bunx playwright install --with-deps
@@ -123,7 +123,8 @@ On a minimal Linux without root, `scripts/headless-deps.sh` unpacks Chromium's l
 into `.cache/headless/` instead of installing them. CI runs the type check, unit tests, build and
 end-to-end tests on every push and pull request; Vercel deploys `main`.
 
-The code is in `src/`: `model/` (pure cube logic), `graph/` (the cube layers, routes, layout),
+The pages are in `site/` (the standalone explorer, the embedding demo, and `public/` for files served
+as they are); the build writes `dist/`. The code is in `src/`: `model/` (pure cube logic), `graph/` (the cube layers, routes, layout),
 `outer/` (the dot layers), `render/` (Three.js scenes, labels, picking, camera), `cube/` (the live cube
 and its walks), `ui/` (the panel) and `explorer/` (state and the frame loop). `CLAUDE.md` has a
 detailed map.
