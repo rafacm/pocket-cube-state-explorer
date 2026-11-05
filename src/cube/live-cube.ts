@@ -20,6 +20,7 @@ export interface LiveCube {
   root: THREE.Group;
   cubies: Cubie[];
   stickerMats: THREE.MeshLambertMaterial[];
+  bodyMat: THREE.MeshLambertMaterial;
   /** the state of the cube as held (not canonical) */
   key: Key;
   queue: QueueItem[];
@@ -50,7 +51,7 @@ export function createLiveCube(canvas: HTMLCanvasElement, theme: Theme): LiveCub
 
   const stickerGeo = roundedSquare(0.84, 0.1);
   const bodyGeo = new THREE.BoxGeometry(0.97, 0.97, 0.97);
-  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x15171c });
+  const bodyMat = new THREE.MeshLambertMaterial({ color: theme.cubeBody });
   const stickerMats = SLOTS.map(() => new THREE.MeshLambertMaterial({ color: 0xffffff }));
   const cubies: Cubie[] = [];
   for (const px of [-1, 1]) for (const py of [-1, 1]) for (const pz of [-1, 1]) {
@@ -67,7 +68,7 @@ export function createLiveCube(canvas: HTMLCanvasElement, theme: Theme): LiveCub
     });
     root.add(g); cubies.push({ p, g });
   }
-  return { renderer, scene, cam, controls, root, cubies, stickerMats, key: SOLVED, queue: [], anim: null };
+  return { renderer, scene, cam, controls, root, cubies, stickerMats, bodyMat, key: SOLVED, queue: [], anim: null };
 }
 
 export function paintCube(x: Explorer, key: Key): void {

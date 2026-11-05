@@ -17,6 +17,8 @@ export interface BundleLines {
   pa: THREE.BufferAttribute; ca: THREE.BufferAttribute;
   g: THREE.BufferGeometry; l: THREE.LineSegments;
   n: number; color: THREE.Color;
+  /** each line's weight (0..1, from how many links it carries), to recolour it for another theme */
+  weight: Float32Array;
 }
 export interface Bundles { tree: BundleLines; extra: BundleLines }
 
@@ -33,7 +35,22 @@ function makeBundleLines(scene: THREE.Scene, color: THREE.Color): BundleLines {
   g.setAttribute('position', pa); g.setAttribute('color', ca); g.setDrawRange(0, 0);
   const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }));
   l.frustumCulled = false; scene.add(l);
-  return { pos, col, pa, ca, g, l, n: 0, color: color.clone() };
+  return { pos, col, pa, ca, g, l, n: 0, color: color.clone(), weight: new Float32Array(cap) };
+}
+
+/** A bundle line's colour: between the stage and its own colour, by its weight. */
+function colourLine(L: BundleLines, i: number, stage: THREE.Color): void {
+  const t = L.weight[i];
+  for (const v of [i * 6, i * 6 + 3]) {
+    L.col[v] = stage.r + (L.color.r - stage.r) * t; L.col[v + 1] = stage.g + (L.color.g - stage.g) * t; L.col[v + 2] = stage.b + (L.color.b - stage.b) * t;
+  }
+}
+
+/** Recolours the bundles for the current theme. */
+export function recolourBundles(x: Explorer): void {
+  const B = x.bundles, t = x.theme;
+  B.tree.color.copy(t.ink); B.extra.color.copy(t.route1);
+  for (const L of [B.tree, B.extra]) { for (let i = 0; i < L.n; i++) colourLine(L, i, t.stage); L.ca.needsUpdate = true; }
 }
 
 export function createBundles(scene: THREE.Scene, theme: Theme): Bundles {
@@ -87,7 +104,8 @@ export function buildBundles(x: Explorer, nd: number): void {
       L.pos[q] = cen1[a * 3] / la * R1; L.pos[q + 1] = cen1[a * 3 + 1] / la * R1; L.pos[q + 2] = cen1[a * 3 + 2] / la * R1;
       L.pos[q + 3] = cen2[b * 3] / lb * R2; L.pos[q + 4] = cen2[b * 3 + 1] / lb * R2; L.pos[q + 5] = cen2[b * 3 + 2] / lb * R2;
       const t = 0.12 + 0.7 * Math.log(cnt + 1) / lmax;
-      for (const v of [q, q + 3]) { L.col[v] = STAGE.r + (L.color.r - STAGE.r) * t; L.col[v + 1] = STAGE.g + (L.color.g - STAGE.g) * t; L.col[v + 2] = STAGE.b + (L.color.b - STAGE.b) * t; }
+      L.weight[L.n] = t;
+      colourLine(L, L.n, STAGE);
       L.n++;
     }
     L.pa.needsUpdate = true; L.ca.needsUpdate = true; L.g.setDrawRange(0, L.n * 2);

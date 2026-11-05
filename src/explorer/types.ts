@@ -7,7 +7,7 @@ import type { Elements } from '../ui/elements';
 import type { Graph, GNode } from '../graph/graph';
 import type { Rng } from './rng';
 import type { ColorMode, View } from './settings';
-import type { Theme } from './theme';
+import type { Theme, ThemeMode } from './theme';
 import type { GraphScene } from '../render/scene';
 import type { LiveCube } from '../cube/live-cube';
 import type { Dots, Job } from '../outer/dots';
@@ -79,6 +79,9 @@ export interface Explorer {
   container: HTMLElement;
   el: Elements;
   theme: Theme;
+  themeMode: ThemeMode;
+  /** told the theme setting and the scheme in effect after every theme change */
+  onTheme: ((mode: ThemeMode, scheme: 'light' | 'dark') => void) | null;
   reducedMotion: boolean;
 
   // settings

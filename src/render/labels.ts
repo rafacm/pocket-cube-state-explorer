@@ -29,6 +29,9 @@ export interface Labels {
 
 export const createLabels = (): Labels => ({ edges: [], at: 0, dirty: true, lastCam: new Float32Array(16), pool: [] });
 
+/** After a theme change: every label takes its colour from the theme again. */
+export function resetLabelColours(x: Explorer): void { for (const d of x.labels.pool) d._f = undefined; x.labels.dirty = true; }
+
 /** Chooses which cube-layer links get a label (when the camera moved, at most every 150 ms). */
 export function updateEdgeLabels(x: Explorer, now: number): void {
   const L = x.labels, gs = x.gs, cam = gs.cam;

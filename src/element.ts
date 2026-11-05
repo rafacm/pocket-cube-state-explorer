@@ -6,11 +6,12 @@
 // It renders into a shadow root, so the page's styles and the explorer's do not mix. Attributes:
 //   no-header           hide the explorer's own title bar
 //   eager               start at once (default: when it first comes within 200 px of the viewport)
-//   data-theme="dark"   or "light": the panel's colour scheme (default: follows the system)
+//   data-theme="dark"   or "light": its colour theme, 3D stage included (default: follows the system)
 // Size it with CSS: its height is --explorer-height (default 720px); when it is narrower than 860 px
 // the panel goes below the stage and it grows to fit.
 import css from './styles/explorer.css?inline';
 import { createExplorer, type ExplorerHandle } from './explorer';
+import { THEME_MODES, type ThemeMode } from './explorer/theme';
 
 export { createExplorer } from './explorer';
 export type { ExplorerHandle, ExplorerOptions } from './explorer';
@@ -32,7 +33,10 @@ function ensureFonts(): void {
   document.head.appendChild(link);
 }
 
+const themeOf = (value: string | null): ThemeMode => THEME_MODES.includes(value as ThemeMode) ? value as ThemeMode : 'system';
+
 export class PocketCubeExplorer extends HTMLElement {
+  static observedAttributes = ['data-theme'];
   #handle: ExplorerHandle | null = null;
   #mount: HTMLDivElement | null = null;
   #io: IntersectionObserver | null = null;
@@ -52,6 +56,10 @@ export class PocketCubeExplorer extends HTMLElement {
     this.#io.observe(this);
   }
 
+  attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
+    if (name === 'data-theme') this.#handle?.setTheme(themeOf(value));
+  }
+
   disconnectedCallback(): void {
     this.#io?.disconnect(); this.#io = null;
     this.#handle?.destroy(); this.#handle = null;
@@ -63,7 +71,7 @@ export class PocketCubeExplorer extends HTMLElement {
     this.#mount = document.createElement('div');
     this.#mount.className = 'mount';
     this.shadowRoot!.append(this.#mount);
-    this.#handle = createExplorer(this.#mount, { keyboard: 'explorer' });
+    this.#handle = createExplorer(this.#mount, { keyboard: 'explorer', theme: themeOf(this.getAttribute('data-theme')) });
   }
 }
 
