@@ -64,7 +64,29 @@ Plain JavaScript in one HTML file, no build step:
 - Browser APIs: Canvas 2D, `ResizeObserver`, `requestAnimationFrame`, Clipboard API
 - Google Fonts: Unbounded, Instrument Sans, JetBrains Mono
 
-## Further reading
+## Related work
+
+**The numbers**
 
 - [Jaap's Puzzle Page: Pocket Cube](https://jaapsch.net/puzzles/cube2.htm) — the state count and the
   distance tables for both quarter-turn and face-turn metrics
+- [God's Algorithm for the 2x2x2 Pocket Cube](https://www.math.rwth-aachen.de/~Martin.Schoenert/Cube-Lovers/Jerry_Bryan__God's_Algorithm_for_the_2x2x2_Pocket_Cube.html)
+  (Jerry Bryan, Cube-Lovers mailing list, 1993) — the distance distribution, computed by exhaustive search
+- [The pocket cube: correction, calculation, and conjectures](https://www.math.rwth-aachen.de/~Martin.Schoenert/Cube-Lovers/Dan_Hoey__The_pocket_cube__correction,_calculation,_and_conjectures.html)
+  (Dan Hoey, Cube-Lovers mailing list, 1984) — early calculations of the Pocket Cube's positions
+
+**Visualisations and tools**
+
+- [sCUBEdiver: a visual analytics tool for discovering optimal 2x2x2 Rubik's Cube solution sequences](https://dataroom.liris.cnrs.fr/vizvid/trajectoires/rubix/s12650-026-01111-x.pdf)
+  (Bence Dániel Erős and Roland Kunkli, *Journal of Visualization*, 2026) — compares solution paths of
+  beginner, intermediate and optimal methods through the 2x2x2 state space, projected to 2D, with an
+  animated 3D cube
+- [Solving Small Rubik's Cubes as Slowly as Possible](https://drops.dagstuhl.de/storage/00lipics/lipics-vol366-fun2026/LIPIcs.FUN.2026.38/LIPIcs.FUN.2026.38.pdf)
+  (Jenny Quan, Noah Kim, Bernardo Subercaseaux and John Mackey, FUN 2026) — studies the 2x2x2 graph of
+  states and draws small parts of it; the full graph is too large for their figures
+- [Rubik's TSNE](https://koaning.io/posts/rubik-tsne) (Vincent Warmerdam) — static maps of random cube
+  states placed by similarity
+- [Building an optimal Pocket Cube (2x2x2) Solver using Rust/WASM and Three.js/React](https://eddmann.com/posts/building-an-optimal-pocket-cube-solver-using-rust-wasm-threejs-and-react/)
+  (Edd Mann) — finds and animates the shortest solution for any 2x2x2 state
+- [Visualization of Rubik's Cube Solution Algorithms](https://research.jku.at/en/activities/visualization-of-rubiks-cube-solution-algorithms/)
+  (Johannes Kepler University Linz) — a research talk on visualising how solution methods work
