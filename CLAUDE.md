@@ -1,17 +1,18 @@
 # Pocket Cube State Explorer: notes for Claude
 
 A 3D explorer of all 3,674,160 states of the 2×2×2 cube. TypeScript (strict) + Vite + Three.js r147,
-no UI framework, no CSS framework. Runs as a standalone page (`index.html`) and as the
+no UI framework, no CSS framework. Runs as a standalone page (`site/index.html`) and as the
 `<pocket-cube-explorer>` web component (`src/element.ts`). Read `README.md` for the user-facing
 description.
 
 ## Commands (bun is the package manager and test runner; there may be no `node`)
 
 - `bun run dev` / `bun run build` / `bun run preview`: the build writes the site to `dist/` and the
-  embed bundle to `dist/embed/pocket-cube-explorer.js` (second Vite config, `vite.embed.config.ts`).
+  embed bundle to `dist/embed/pocket-cube-explorer.js` (`vite.config.ts`, `--mode embed`). The pages
+  live in `site/` (Vite's root; `site/public/` is copied as is); `/src/...` in them is aliased to `src/`.
 - `bun run typecheck` (tsc, strict), `bun run test` (unit tests in `tests/`, ~4 s),
   `bun run e2e` (Playwright in `e2e/`: builds, serves with `vite preview`, drives headless Chromium).
-- `bun run screenshots [scene ...]`: renders `docs/screenshots/*.png` and `public/og.jpg` (the
+- `bun run screenshots [scene ...]`: renders `docs/screenshots/*.png` and `site/public/og.jpg` (the
   link-preview image) from `dist/`. Scenes are listed in `scripts/screenshots.ts`.
 - CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, build and e2e on pushes to main and PRs.
 

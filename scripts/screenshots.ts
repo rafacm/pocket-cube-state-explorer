@@ -3,7 +3,7 @@
 //
 //   bun run build && bun scripts/screenshots.ts [scene ...]
 //
-// Scenes (default: all) write to docs/screenshots/<scene>.png; "preview" writes public/og.jpg, the
+// Scenes (default: all) write to docs/screenshots/<scene>.png; "preview" writes site/public/og.jpg, the
 // image shown when someone shares a link to the explorer. Needs Playwright's Chromium
 // (bunx playwright install chromium); without root, scripts/headless-deps.sh provides its libraries.
 import { chromium, type Page } from '@playwright/test';
@@ -152,7 +152,7 @@ const scenes: Scene[] = [
     // The overview, laid out at 1600 x 840 and drawn at 0.75 scale: 1200 x 630, the shape link previews
     // use. JPEG, because WhatsApp skips preview images much over 300 kB.
     name: 'preview', what: 'the link-preview image (Open Graph): the overview at 1200 x 630',
-    width: 1600, height: 840, scale: 0.75, out: join(ROOT, 'public/og.jpg'),
+    width: 1600, height: 840, scale: 0.75, out: join(ROOT, 'site/public/og.jpg'),
     run: firstLayers,
   },
 ];
