@@ -69,9 +69,14 @@ export function bindNavigation(x: Explorer, opts: NavigationOptions): void {
   });
   listen(x, window, 'blur', () => { if (x.cam.spaceDown) panMode(false); setPanCursor(false); });
 
+  // Zoom: OrbitControls' own zoom (pinch, on touch screens) is on only for touch; the wheel zooms toward
+  // the pointer below instead. Both listeners run in the capture phase, so they fire before
+  // OrbitControls' own listeners on the same canvas.
+  listen(x, canvas, 'pointerdown', (e: PointerEvent) => { controls.enableZoom = e.pointerType === 'touch'; }, { capture: true });
   const wheelRay = new THREE.Vector3(), wheelP = new THREE.Vector3(), viewN = new THREE.Vector3();
   listen(x, canvas, 'wheel', (e: WheelEvent) => {
     e.preventDefault();
+    controls.enableZoom = false;
     x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false;
     const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
     const k = Math.exp(Math.max(-60, Math.min(60, dy)) * (e.ctrlKey ? 0.012 : 0.0018));   // ctrl + wheel is a trackpad pinch
@@ -92,7 +97,7 @@ export function bindNavigation(x: Explorer, opts: NavigationOptions): void {
     cam.position.sub(wheelP).multiplyScalar(kk).add(wheelP);
     controls.target.sub(wheelP).multiplyScalar(kk).add(wheelP);
     controls.update();
-  }, { passive: false });
+  }, { passive: false, capture: true });
 }
 
 /** Advances a flight and the fit-to-graph easing; called every frame. */
