@@ -18,6 +18,10 @@
     "vite": "^8.3.6"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "bun tests/model-check.mjs",
     "screenshot": "bun scripts/screenshot.ts"
   }
 }

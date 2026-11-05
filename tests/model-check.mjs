@@ -1,4 +1,4 @@
-// Checks the cube model inside index.html without a browser: node tests/model-check.mjs
+// Checks the cube model in src/app.js without a browser: node tests/model-check.mjs
 // It runs the code between /*MODEL-START*/ and /*MODEL-END*/ and verifies that
 //   1. state numbers round-trip (decode(encode(state)) === state),
 //   2. the move tables agree with the sticker model,
@@ -7,9 +7,9 @@
 // Takes a few seconds. Exit code 1 on any failure.
 import { readFileSync } from 'node:fs';
 
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const model = html.split('/*MODEL-START*/')[1]?.split('/*MODEL-END*/')[0];
-if (!model) { console.error('Could not find the /*MODEL-START*/ ... /*MODEL-END*/ section in index.html'); process.exit(1); }
+const src = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+const model = src.split('/*MODEL-START*/')[1]?.split('/*MODEL-END*/')[0];
+if (!model) { console.error('Could not find the /*MODEL-START*/ ... /*MODEL-END*/ section in src/app.js'); process.exit(1); }
 
 // new Function (not eval) so the code is optimised normally
 const M = new Function(`"use strict";\n${model}\nreturn { SOLVED, ALL_MOVES, OPP_MOVES, ROT_MOVES, ORIENTS, NSTATE, QTM_TOTALS, HTM_TOTALS,
