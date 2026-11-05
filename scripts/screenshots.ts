@@ -3,7 +3,7 @@
 //
 //   bun run build && bun scripts/screenshots.ts [scene ...]
 //
-// Scenes (default: all) write to docs/screenshots/<scene>.png; "preview" writes public/og.png, the
+// Scenes (default: all) write to docs/screenshots/<scene>.png; "preview" writes public/og.jpg, the
 // image shown when someone shares a link to the explorer. Needs Playwright's Chromium
 // (bunx playwright install chromium); without root, scripts/headless-deps.sh provides its libraries.
 import { chromium, type Page } from '@playwright/test';
@@ -69,15 +69,17 @@ interface Scene {
   width: number; height: number;
   out: string;
   run(page: Page): Promise<void>;
-  /** capture only the 3D stage, cropped to the viewport's size minus the panel */
-  clip?: { width: number; height: number };
+  /** device pixel ratio: below 1 renders a large layout into a smaller picture */
+  scale?: number;
 }
 const shot = (name: string) => join(ROOT, 'docs/screenshots', name + '.png');
+/** The first screenshot, also used as the link preview: the solved cube and two layers around it. */
+async function firstLayers(page: Page) { await growTo(page, 2); await settle(page, 9000); }
 const scenes: Scene[] = [
   {
-    name: 'overview', what: 'the first 3 layers: 154 stickered cubes, their links and turn labels',
+    name: 'overview', what: 'the first 2 layers: 34 stickered cubes, their links and turn labels',
     width: 1600, height: 1000, out: shot('overview'),
-    async run(page) { await growTo(page, 3); await settle(page, 9000); },
+    run: firstLayers,
   },
   {
     name: 'routes', what: 'a scramble found in the graph: its shortest routes, links and turn labels up close',
@@ -112,19 +114,17 @@ const scenes: Scene[] = [
     },
   },
   {
-    name: 'preview', what: 'the link-preview image (Open Graph), 1200 x 630',
-    width: 1580, height: 700, out: join(ROOT, 'public/og.png'), clip: { width: 1200, height: 630 },
-    async run(page) {
-      await growTo(page, 6);
-      await page.addStyleTag({ content: '.overlay { display: none !important; }' }); // a picture, not a UI
-      await settle(page, 10000);
-    },
+    // The overview, laid out at 1600 x 840 and drawn at 0.75 scale: 1200 x 630, the shape link previews
+    // use. JPEG, because WhatsApp skips preview images much over 300 kB.
+    name: 'preview', what: 'the link-preview image (Open Graph): the overview at 1200 x 630',
+    width: 1600, height: 840, scale: 0.75, out: join(ROOT, 'public/og.jpg'),
+    run: firstLayers,
   },
 ];
 
 // ---------- serving dist/ and running ----------
 if (!existsSync(join(DIST, 'index.html'))) { console.error('No dist/index.html: run bun run build first'); process.exit(1); }
-const types: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' };
+const types: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json' };
 const server = Bun.serve({
   port: 0,
   fetch(req) {
@@ -146,17 +146,15 @@ let failed = 0;
 for (const scene of scenes.filter(s => !wanted.length || wanted.includes(s.name))) {
   const t0 = Date.now();
   console.log(`${scene.name}: ${scene.what}`);
-  const page = await browser.newPage({ viewport: { width: scene.width, height: scene.height } });
+  const page = await browser.newPage({ viewport: { width: scene.width, height: scene.height }, deviceScaleFactor: scene.scale ?? 1 });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   try {
     await open(page, url);
     await scene.run(page);
     mkdirSync(dirname(scene.out), { recursive: true });
-    if (scene.clip) {
-      const box = (await page.locator('#stage').boundingBox())!;
-      await page.screenshot({ path: scene.out, timeout: 300_000, clip: { x: box.x, y: box.y, width: scene.clip.width, height: scene.clip.height } });
-    } else await page.screenshot({ path: scene.out, timeout: 300_000 });
+    const jpeg = scene.out.endsWith('.jpg');
+    await page.screenshot({ path: scene.out, timeout: 300_000, type: jpeg ? 'jpeg' : 'png', ...(jpeg ? { quality: 82 } : {}) });
     console.log(`  saved ${scene.out} (${Math.round((Date.now() - t0) / 1000)} s)`);
   } catch (e) {
     failed++; console.error(`  failed: ${e}`);

@@ -11,7 +11,7 @@ description.
   embed bundle to `dist/embed/pocket-cube-explorer.js` (second Vite config, `vite.embed.config.ts`).
 - `bun run typecheck` (tsc, strict), `bun run test` (unit tests in `tests/`, ~4 s),
   `bun run e2e` (Playwright in `e2e/`: builds, serves with `vite preview`, drives headless Chromium).
-- `bun run screenshots [scene ...]`: renders `docs/screenshots/*.png` and `public/og.png` (the
+- `bun run screenshots [scene ...]`: renders `docs/screenshots/*.png` and `public/og.jpg` (the
   link-preview image) from `dist/`. Scenes are listed in `scripts/screenshots.ts`.
 - CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, build and e2e on pushes to main and PRs.
 

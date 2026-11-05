@@ -10,7 +10,7 @@ stickers, and a large animated cube walks you along any route through the graph.
 **Try it: [pocket-cube-state-explorer.vercel.app](https://pocket-cube-state-explorer.vercel.app)**
 (a desktop browser with WebGL works best).
 
-![The first three layers: 154 stickered cubes around the solved cube, joined by links coloured and labelled by their turn](docs/screenshots/overview.png)
+![The solved cube and the two layers around it: 34 stickered cubes joined by links coloured and labelled by their turn](docs/screenshots/overview.png)
 
 ## What you can do
 
@@ -100,7 +100,7 @@ bun run build        # dist/: the site, plus dist/embed/pocket-cube-explorer.js
 bun run typecheck    # TypeScript, strict
 bun run test         # unit tests: the cube model, the graph, distances of all 3,674,160 states
 bun run e2e          # end-to-end tests in headless Chromium (Playwright)
-bun run screenshots  # regenerates docs/screenshots/ and public/og.png (the link-preview image)
+bun run screenshots  # regenerates docs/screenshots/ and public/og.jpg (the link-preview image)
 ```
 
 The end-to-end tests and screenshots need Playwright's Chromium (`bunx playwright install --with-deps
