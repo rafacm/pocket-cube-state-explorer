@@ -16,6 +16,12 @@ python3 -m http.server 8000   # then open http://localhost:8000
 
 Three.js and the fonts load from public CDNs, so the first load needs an internet connection.
 
+To check the cube logic without a browser (Node 18 or newer, no dependencies):
+
+```sh
+node tests/model-check.mjs   # verifies all 3,674,160 states against the published layer sizes
+```
+
 ## What you can do
 
 - **Grow the graph** one layer at a time, or let Auto-grow build all 14 layers (11 with half turns).
