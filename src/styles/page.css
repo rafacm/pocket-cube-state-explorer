@@ -1,7 +1,10 @@
 /* The standalone page: the explorer fills the window. */
-:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 html, body, #app { height: 100%; }
-body { margin: 0; background: var(--bg); }
+/* the page behind the explorer (seen when scrolling past its edges) follows its theme (src/main.ts) */
+body { margin: 0; background: #ECEEF3; }
+@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) body { background: #0E1117; } }
+html[data-theme="dark"] body { background: #0E1117; }
 #app { --explorer-height: 100%; }
 @media (max-width: 860px) {
   html, body, #app { height: auto; }

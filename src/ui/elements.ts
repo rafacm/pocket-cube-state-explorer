@@ -8,6 +8,8 @@ export function findElements(root: ParentNode) {
     return el as T;
   };
   return {
+    /** the explorer's root, which carries the design tokens and the theme */
+    pcse: get('pcse'),
     stage: get('stage'),
     graph: get<HTMLCanvasElement>('graph'),
     labels: get('labels'),
@@ -72,6 +74,7 @@ export function findElements(root: ParentNode) {
     census: get('census'),
     viewButtons: [...root.querySelectorAll<HTMLButtonElement>('.seg [data-view]')],
     colorButtons: [...root.querySelectorAll<HTMLButtonElement>('.seg [data-color]')],
+    themeButtons: [...root.querySelectorAll<HTMLButtonElement>('.seg [data-theme-mode]')],
   };
 }
 export type Elements = ReturnType<typeof findElements>;

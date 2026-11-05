@@ -40,6 +40,10 @@ stickers, and a large animated cube walks you along any route through the graph.
 
 - **Turn the cube** with U, R, F, D, L, B and whole-cube rotations x, y, z; the 2D net and facelet
   strings show the state, held and in canonical orientation.
+- **Light or dark**: it follows your system, or pick one under Appearance; the 3D stage, links and
+  labels change with it.
+
+![Dark mode: a selected state with its route in pink and its turns in boxed labels](docs/screenshots/dark.png)
 
 ## Put it on your site
 
@@ -59,8 +63,9 @@ shows two of them in a blog-like layout.
 - `no-header` hides its title bar (your page has its own); `eager` starts it at once.
 - Height: `--explorer-height` (default `720px`), e.g. `style="--explorer-height: 80vh"`. Narrower than
   860 px, the panel goes below the 3D stage and the element grows to fit.
-- `data-theme="light"` or `"dark"` fixes the panel's colour scheme (default: the system's). The design
-  tokens are CSS custom properties, so `pocket-cube-explorer { --accent: #0A7; }` works too.
+- `data-theme="light"` or `"dark"` fixes its colour theme, 3D stage included (default: the system's);
+  change the attribute and it recolours at once. The design tokens are CSS custom properties on its
+  root, set per theme in `src/styles/tokens.css`.
 - Keys (Esc to deselect, Space to pan) only act inside the explorer, never on the rest of your page.
 
 Without a script, an iframe works too:

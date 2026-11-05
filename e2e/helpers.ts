@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Opens the explorer and fails the test on any uncaught page error. */
 export async function open(page: Page): Promise<string[]> {
@@ -36,3 +36,17 @@ export async function fastWalks(page: Page): Promise<void> {
 }
 
 export const SOLVED_FACELETS = 'WWWW:RRRR:GGGG:YYYY:OOOO:BBBB';
+
+/** The colour the 3D stage is drawn in: a pixel near the bottom-right corner of the WebGL canvas. */
+export async function stagePixel(canvas: Locator): Promise<[number, number, number]> {
+  const png = (await canvas.screenshot()).toString('base64');
+  return canvas.page().evaluate(async (b64) => {
+    const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d')!; g.drawImage(img, 0, 0);
+    const d = g.getImageData(img.width - 6, img.height - 6, 1, 1).data;
+    return [d[0], d[1], d[2]] as [number, number, number];
+  }, png);
+}
+export const isDark = ([r, g, b]: [number, number, number]) => r + g + b < 150;
+export const isLight = ([r, g, b]: [number, number, number]) => r + g + b > 600;

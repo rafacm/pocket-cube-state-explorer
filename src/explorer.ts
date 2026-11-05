@@ -3,7 +3,8 @@
 // frees its WebGL resources and listeners, so it can be mounted and unmounted like any component.
 import template from './ui/template.html?raw';
 import { findElements } from './ui/elements';
-import { readTheme } from './explorer/theme';
+import { readTheme, schemeOf, type ThemeMode } from './explorer/theme';
+import { refreshTheme, setThemeMode } from './explorer/appearance';
 import { Rng } from './explorer/rng';
 import type { Explorer } from './explorer/types';
 import { listen } from './explorer/events';
@@ -30,11 +31,17 @@ export interface ExplorerOptions {
    * Space-to-pan always needs the pointer over the 3D stage.
    */
   keyboard?: 'page' | 'explorer';
+  /** 'system' (the default) follows the device's light or dark setting. */
+  theme?: ThemeMode;
+  /** Called after every theme change (also from the explorer's own Appearance control). */
+  onThemeChange?: (mode: ThemeMode, scheme: 'light' | 'dark') => void;
 }
 
 export interface ExplorerHandle {
   /** Stops the explorer, removes its listeners and frees its WebGL resources. */
   destroy(): void;
+  /** Switches to light, dark, or the system's theme; the 3D scenes are recoloured to match. */
+  setTheme(mode: ThemeMode): void;
 }
 
 /** Can this browser draw with WebGL at all? (A throwaway canvas, released at once.) */
@@ -52,8 +59,8 @@ export function webglAvailable(): boolean {
 
 const SITE = 'https://pocket-cube-state-explorer.vercel.app';
 /** What shows instead of the explorer when the browser cannot draw it. */
-function showNoWebGL(container: HTMLElement, why: string): ExplorerHandle {
-  container.innerHTML = `<div class="pcse"><div class="app nogl" role="alert">
+function showNoWebGL(container: HTMLElement, why: string, mode: ThemeMode): ExplorerHandle {
+  container.innerHTML = `<div class="pcse"${mode === 'system' ? '' : ` data-theme="${mode}"`}><div class="app nogl" role="alert">
     <div class="nogl-box">
       <h2>This explorer needs 3D graphics</h2>
       <p>${why} Try a recent Chrome, Edge, Firefox or Safari with hardware acceleration turned on.</p>
@@ -61,35 +68,47 @@ function showNoWebGL(container: HTMLElement, why: string): ExplorerHandle {
       <p><a href="${SITE}/" target="_blank" rel="noopener">Open the Pocket Cube State Explorer</a></p>
     </div>
   </div></div>`;
-  return { destroy() { container.innerHTML = ''; } };
+  const root = container.firstElementChild as HTMLElement;
+  return {
+    destroy() { container.innerHTML = ''; },
+    setTheme(m) { if (m === 'system') delete root.dataset.theme; else root.dataset.theme = m; },
+  };
 }
 
 export function createExplorer(container: HTMLElement, options: ExplorerOptions = {}): ExplorerHandle {
   let inner: ExplorerHandle | null = null;
+  // the theme setting survives a restart, including a change made with the explorer's own control
+  let mode: ThemeMode = options.theme ?? 'system';
+  const opts: ExplorerOptions = { ...options, onThemeChange: (m, scheme) => { mode = m; options.onThemeChange?.(m, scheme); } };
   const start = () => {
-    if (!webglAvailable()) { inner = showNoWebGL(container, 'Your browser has WebGL (3D graphics) turned off or unavailable, so the graph of 3,674,160 cube states cannot be drawn here.'); return; }
+    if (!webglAvailable()) { inner = showNoWebGL(container, 'Your browser has WebGL (3D graphics) turned off or unavailable, so the graph of 3,674,160 cube states cannot be drawn here.', mode); return; }
     try {
-      inner = mount(container, options, restart);
+      inner = mount(container, { ...opts, theme: mode }, restart);
     } catch (err) {
       console.error('Pocket Cube State Explorer could not start', err);
-      inner = showNoWebGL(container, 'The explorer could not start its 3D graphics on this device.');
+      inner = showNoWebGL(container, 'The explorer could not start its 3D graphics on this device.', mode);
     }
   };
   const restart = () => { inner?.destroy(); inner = null; start(); };
   start();
-  return { destroy() { inner?.destroy(); inner = null; } };
+  return {
+    destroy() { inner?.destroy(); inner = null; },
+    setTheme(m) { mode = m; inner?.setTheme(m); },
+  };
 }
 
 function mount(container: HTMLElement, options: ExplorerOptions, restart: () => void): ExplorerHandle {
   container.innerHTML = template;
   const el = findElements(container);
-  const theme = readTheme(container);
+  const themeMode = options.theme ?? 'system';
+  if (themeMode !== 'system') el.pcse.dataset.theme = themeMode;
+  const theme = readTheme(el.pcse);
   const reducedMotion = !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gs = createGraphScene(el.graph, theme, reducedMotion);
   const radii: number[] = [];
   computeRadii(radii, false);
   const x: Explorer = {
-    container, el, theme, reducedMotion,
+    container, el, theme, themeMode, onTheme: options.onThemeChange ?? null, reducedMotion,
     halfTurns: false, view: 'all', labelAll: true, colorMode: 'routes',
     renderDirty: true, cubeDirty: true, lastEventAt: 0,
     rng: new Rng(), radii, graph: createGraph(), gs, cube: createLiveCube(el.cube, theme),
@@ -155,11 +174,18 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
   listen(x, el.btnRestart, 'click', () => restart());
   x.cleanup.push(() => clearTimeout(lostTimer));
 
+  // the system's light or dark setting can change while the explorer runs
+  const scheme = window.matchMedia?.('(prefers-color-scheme: dark)');
+  if (scheme) listen(x, scheme, 'change', () => { if (x.themeMode === 'system') refreshTheme(x); });
+  el.themeButtons.forEach(b => b.setAttribute('aria-pressed', b.dataset.themeMode === themeMode ? 'true' : 'false'));
+  x.onTheme?.(themeMode, schemeOf(el.pcse));
+
   applyView(x);
   startOver(x);
   startFrames(x);
 
   return {
+    setTheme(m: ThemeMode) { if (!x.destroyed) setThemeMode(x, m); },
     destroy() {
       if (x.destroyed) return;
       x.destroyed = true;

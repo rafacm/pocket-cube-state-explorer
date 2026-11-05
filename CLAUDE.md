@@ -22,11 +22,11 @@ description.
 - Small commits that are easy to review; keep the app working after each one.
 - Deploys: Vercel builds every push (https://pocket-cube-state-explorer.vercel.app is `main`, i.e.
   production; branches get preview URLs). Work on a branch and open a PR; the owner merges.
-- Preferences learned so far: paper-white stage (`--stage: #F6F4EF`), calm defaults, slow walks
+- Preferences learned so far: paper-white stage in light mode (`--stage: #F6F4EF`), a dark stage in dark mode, calm defaults, slow walks
   (about 2 s per step with the camera following), labels only when readable, nothing moves until
   asked (clicking selects; Solve / Play from solved walk), everything deselectable (click empty
-  space, Esc), no needless GPU work when idle. Light and dark mode for the whole explorer (cubes and
-  lines too) is wanted later; the stage is paper white in both themes today.
+  space, Esc), no needless GPU work when idle. Light, dark and system themes cover everything, the 3D
+  stage included (`explorer/appearance.ts` recolours the scenes from the tokens).
 - An older single-file copy was published as a claude.ai artifact
   (https://claude.ai/artifact/Gk5QzYF7cJg12XfvtTT2kt). It predates the TypeScript version.
 
@@ -61,7 +61,8 @@ import each other freely (only functions, nothing runs at import time).
   theme (3D colours read from the CSS tokens), RNG, listeners that `destroy()` removes (`events.ts`).
 - `explorer.ts` – `createExplorer(container, { keyboard })` → `{ destroy }`. `main.ts` mounts it on
   the standalone page; `element.ts` is the web component.
-- `styles/` – `tokens.css` (on `:root, :host`), `layout.css`, `stage.css`, `panel.css`, combined by
+- `styles/` – `tokens.css` (on `.pcse`, the explorer's root; dark values under `data-theme="dark"`
+  and `prefers-color-scheme`), `layout.css`, `stage.css`, `panel.css`, combined by
   `explorer.css`; `page.css` is only for the standalone page. The narrow layout is a container query
   (`.pcse` is the container), so it also applies to an explorer in a narrow column.
 

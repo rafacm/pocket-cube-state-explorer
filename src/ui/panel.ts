@@ -13,6 +13,8 @@ import { shownIn, totalEdges, totalStates } from '../outer/dots';
 import { PIN_COLORS, cubeHist, repaintAll } from '../outer/colors';
 import { flyHome, flyTo } from '../render/navigation';
 import { twoRouteState } from './routes';
+import { setThemeMode } from '../explorer/appearance';
+import type { ThemeMode } from '../explorer/theme';
 
 function padButton(x: Explorer, mv: Move): HTMLButtonElement {
   const btn = document.createElement('button');
@@ -126,6 +128,7 @@ export function bindPanel(x: Explorer): void {
     el.pinLegend.hidden = x.colorMode !== 'routes';
     repaintAll(x);
   }));
+  el.themeButtons.forEach(b => listen(x, b, 'click', () => setThemeMode(x, b.dataset.themeMode as ThemeMode)));
   listen(x, el.optBundles, 'change', () => { applyView(x); el.legBundles.hidden = !(x.bundles.tree.n + x.bundles.extra.n > 0 && el.optBundles.checked); });
   listen(x, el.btnGrow, 'click', () => { grow(x); });
   listen(x, el.btnAuto, 'click', () => setAuto(x, !x.growth.auto));

@@ -2,6 +2,10 @@
 // element, so the page's styles and the WebGL drawing share one palette.
 import * as THREE from 'three';
 
+/** 'system' follows the device's light or dark setting. */
+export type ThemeMode = 'system' | 'light' | 'dark';
+export const THEME_MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
+
 export interface Theme {
   stage: THREE.Color;
   /** sticker colours, by colour number (U D R L F B) */
@@ -27,6 +31,11 @@ export function readTheme(el: Element): Theme {
     route1: new THREE.Color(tok('--route1')),
     route2: new THREE.Color(tok('--route2')),
     ink: new THREE.Color(tok('--stage-ink')),
-    cubeBody: new THREE.Color(0x16181d),
+    cubeBody: new THREE.Color(tok('--cube-body') || '#16181D'),
   };
+}
+
+/** Whether the element shows its light or its dark colours now. */
+export function schemeOf(el: Element): 'light' | 'dark' {
+  return getComputedStyle(el).colorScheme.includes('dark') ? 'dark' : 'light';
 }
