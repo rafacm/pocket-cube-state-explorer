@@ -1,0 +1,23 @@
+{
+  "name": "pocket-cube-state-explorer",
+  "version": "0.1.0",
+  "description": "Every state of the 2x2x2 Pocket Cube as a 3D graph, grown layer by layer from the solved cube.",
+  "license": "MIT",
+  "author": "Rafael Cordones",
+  "repository": "github:rafacm/pocket-cube-state-explorer",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "three": "0.147.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/three": "0.147.0",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6"
+  },
+  "scripts": {
+    "screenshot": "bun scripts/screenshot.ts"
+  }
+}
