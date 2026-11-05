@@ -71,6 +71,8 @@ interface Scene {
   run(page: Page): Promise<void>;
   /** device pixel ratio: below 1 renders a large layout into a smaller picture */
   scale?: number;
+  /** the system colour scheme the page sees */
+  colorScheme?: 'light' | 'dark';
 }
 const shot = (name: string) => join(ROOT, 'docs/screenshots', name + '.png');
 /** The first screenshot, also used as the link preview: the solved cube and two layers around it. */
@@ -114,6 +116,18 @@ const scenes: Scene[] = [
     },
   },
   {
+    name: 'dark', what: 'dark mode: three layers and a selected state, its routes and turn labels',
+    width: 1600, height: 1000, out: shot('dark'), colorScheme: 'dark',
+    async run(page) {
+      await growTo(page, 3);
+      await settle(page, 6000);
+      await find(page, 'R U');
+      await settle(page, 5000);
+      await clickStageCentre(page); // the selected cube is in the middle: show its clickable turns
+      await settle(page, 2500);
+    },
+  },
+  {
     // The overview, laid out at 1600 x 840 and drawn at 0.75 scale: 1200 x 630, the shape link previews
     // use. JPEG, because WhatsApp skips preview images much over 300 kB.
     name: 'preview', what: 'the link-preview image (Open Graph): the overview at 1200 x 630',
@@ -146,7 +160,7 @@ let failed = 0;
 for (const scene of scenes.filter(s => !wanted.length || wanted.includes(s.name))) {
   const t0 = Date.now();
   console.log(`${scene.name}: ${scene.what}`);
-  const page = await browser.newPage({ viewport: { width: scene.width, height: scene.height }, deviceScaleFactor: scene.scale ?? 1 });
+  const page = await browser.newPage({ viewport: { width: scene.width, height: scene.height }, deviceScaleFactor: scene.scale ?? 1, colorScheme: scene.colorScheme ?? 'light' });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   try {
