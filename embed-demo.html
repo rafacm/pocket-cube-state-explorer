@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embedding the Pocket Cube State Explorer</title>
+<meta name="robots" content="noindex">
+<style>
+  body { margin: 0; font: 17px/1.6 Georgia, "Times New Roman", serif; color: #222; background: #fff; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 30px; line-height: 1.2; }
+  code, pre { font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  pre { background: #f4f4f4; padding: 12px 14px; overflow-x: auto; border-radius: 6px; }
+  pocket-cube-explorer { margin: 28px 0; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; }
+  .wide { width: min(1200px, calc(100vw - 40px)); margin-left: 50%; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Embedding the Pocket Cube State Explorer</h1>
+  <p>This page stands in for a blog post. Its own styles (serif text, plain headings and buttons) do not reach into the explorer, and the explorer's styles do not leak out. The explorer below starts when it scrolls into view.</p>
+  <pre><code>&lt;script type="module" src="https://pocket-cube-state-explorer.vercel.app/embed/pocket-cube-explorer.js"&gt;&lt;/script&gt;
+&lt;pocket-cube-explorer no-header&gt;&lt;/pocket-cube-explorer&gt;</code></pre>
+  <p>In the text column, narrower than 860 px, the panel sits below the 3D stage:</p>
+  <pocket-cube-explorer no-header id="narrow"></pocket-cube-explorer>
+  <p>Wider than the column, with the title bar and a custom height:</p>
+  <pocket-cube-explorer class="wide" id="wide" style="--explorer-height: 640px"></pocket-cube-explorer>
+  <p><button type="button" id="remove">Remove the wide explorer</button> (it stops and frees its WebGL contexts).</p>
+</main>
+<script type="module">
+  import '/src/element.ts';
+  document.getElementById('remove').addEventListener('click', () => document.getElementById('wide')?.remove());
+</script>
+</body>
+</html>
