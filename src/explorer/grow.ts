@@ -98,7 +98,7 @@ export function stepAuto(x: Explorer, now: number): void {
 /** Back to the solved cube alone (also when the metric changes). */
 export function startOver(x: Explorer): void {
   const c = x.cube;
-  c.queue.length = 0; x.sel.loop = null;
+  c.queue.length = 0; c.history.length = 0; x.sel.loop = null;
   x.ui.cardWanted = false; updateCard(x);
   x.el.heads.hidden = true; x.el.slowTip.hidden = true;
   abortTurn(x);

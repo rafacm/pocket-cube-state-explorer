@@ -21,6 +21,14 @@
         <dt>Click</dt><dd>select a state; click empty space or <kbd>Esc</kbd> to deselect</dd>
         <dt>Double-click</dt><dd>fly close; up close, dots become cubes</dd>
       </dl>
+      <p class="label hint-mouse keys-head">Keys</p>
+      <dl class="keys hint-mouse">
+        <dt><kbd>U</kbd> <kbd>R</kbd> <kbd>F</kbd> <kbd>D</kbd> <kbd>L</kbd> <kbd>B</kbd></dt><dd>turn that face; with <kbd>Shift</kbd> the other way (U′, R′ …)</dd>
+        <dt><kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd></dt><dd>turn the whole cube (with <kbd>Shift</kbd>: x′ y′ z′)</dd>
+        <dt><kbd>Backspace</kbd></dt><dd>undo the last turn</dd>
+        <dt><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>turn the graph around; <kbd>+</kbd> <kbd>−</kbd> zoom</dd>
+        <dt><kbd>0</kbd> · <kbd>Enter</kbd></dt><dd>show the whole graph · fly to the selected state</dd>
+      </dl>
       <dl class="keys hint-touch">
         <dt>Drag</dt><dd>turn the graph around</dd>
         <dt>Pinch</dt><dd>zoom in and out</dd>
@@ -141,7 +149,7 @@
         </section>
 
         <section class="pane" id="pane-turn" data-pane="turn" role="tabpanel" aria-labelledby="tab-turn" hidden>
-          <p class="note first">Turn the big cube by hand; the graph follows it.</p>
+          <p class="note first">Turn the big cube by hand; the graph follows it. Keys: <kbd>U</kbd> <kbd>R</kbd> <kbd>F</kbd> <kbd>D</kbd> <kbd>L</kbd> <kbd>B</kbd>, with <kbd>Shift</kbd> for U′ and the like, <kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd> for the whole cube, <kbd>Backspace</kbd> to undo.</p>
           <div class="pad" id="pad"></div>
           <p class="label">Turn the whole cube</p>
           <div class="pad" id="padRot" style="grid-template-columns:repeat(6, minmax(0, 1fr))"></div>

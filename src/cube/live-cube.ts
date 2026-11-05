@@ -25,6 +25,8 @@ export interface LiveCube {
   key: Key;
   queue: QueueItem[];
   anim: Turning | Waiting | null;
+  /** turns made by hand (pad or keys), newest last, for undo; cleared by anything else that moves it */
+  history: Move[];
 }
 
 function roundedSquare(w: number, r: number): THREE.ShapeGeometry {
@@ -68,7 +70,7 @@ export function createLiveCube(canvas: HTMLCanvasElement, theme: Theme): LiveCub
     });
     root.add(g); cubies.push({ p, g });
   }
-  return { renderer, scene, cam, controls, root, cubies, stickerMats, bodyMat, key: SOLVED, queue: [], anim: null };
+  return { renderer, scene, cam, controls, root, cubies, stickerMats, bodyMat, key: SOLVED, queue: [], anim: null, history: [] };
 }
 
 export function paintCube(x: Explorer, key: Key): void {

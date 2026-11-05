@@ -61,7 +61,9 @@ import each other freely (only functions, nothing runs at import time).
   (`status.ts`).
 - `explorer/` – selection and highlights (`selection.ts`), where states are drawn (`locate.ts`),
   growing, Start over, the layer cap and the out-of-memory stop (`grow.ts`), device hints and the
-  heads-up before heavy layers (`device.ts`), themes (`appearance.ts`), the frame loop with on-demand drawing (`frame.ts`), settings,
+  heads-up before heavy layers (`device.ts`), themes (`appearance.ts`), keyboard turns, undo and
+  camera keys (`keyboard.ts`; the undo history is `cube.history`, cleared by anything but a turn by
+  hand), the frame loop with on-demand drawing (`frame.ts`), settings,
   theme (3D colours read from the CSS tokens), RNG, listeners that `destroy()` removes (`events.ts`).
 - `explorer.ts` – `createExplorer(container, { keyboard })` → `{ destroy }`. `main.ts` mounts it on
   the standalone page; `element.ts` is the web component.

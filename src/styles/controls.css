@@ -21,11 +21,12 @@
 .pop p { margin: 0 0 10px; font-size: 13.5px; }
 .pop .row { gap: 6px; }
 
-.help { top: 58px; left: max(12px, env(safe-area-inset-left, 0px)); width: min(390px, calc(100% - 24px)); }
+.help { top: 58px; left: max(12px, env(safe-area-inset-left, 0px)); width: min(430px, calc(100% - 24px)); max-height: calc(100% - 150px); overflow-y: auto; }
 .keys { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
 .keys dt { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
 .keys dd { margin: 0; color: var(--muted); }
-.keys kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); }
+.keys-head { margin: 14px 0 8px; }
+.keys kbd, .pane kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); }
 .hint-touch { display: none; }
 @media (pointer: coarse) { .hint-mouse { display: none; } .hint-touch { display: grid; } }
 

@@ -23,6 +23,28 @@ export function flyTo(x: Explorer, t: Flyable, dur?: number): void {
   x.cam.flight = { t0: performance.now(), dur: x.reducedMotion ? 1 : (dur || 900), fromT: controls.target.clone(), toT: to, fromP: cam.position.clone(), toP: to.clone().add(dir.multiplyScalar(dist)) };
 }
 
+const sph = new THREE.Spherical();
+/** Turns the camera around the point it looks at (keyboard orbit): angles in radians. */
+export function orbitBy(x: Explorer, dTheta: number, dPhi: number): void {
+  const { cam, controls } = x.gs;
+  x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false;
+  const off = cam.position.clone().sub(controls.target);
+  sph.setFromVector3(off);
+  sph.theta += dTheta; sph.phi = Math.min(Math.PI - 0.05, Math.max(0.05, sph.phi + dPhi));
+  off.setFromSpherical(sph);
+  cam.position.copy(controls.target).add(off);
+  controls.update(); x.renderDirty = true;
+}
+/** Moves the camera toward (k < 1) or away from (k > 1) the point it looks at. */
+export function zoomBy(x: Explorer, k: number): void {
+  const { cam, controls } = x.gs;
+  x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false;
+  const off = cam.position.clone().sub(controls.target);
+  off.setLength(Math.min(controls.maxDistance, Math.max(controls.minDistance, off.length() * k)));
+  cam.position.copy(controls.target).add(off);
+  controls.update(); x.renderDirty = true;
+}
+
 /** Flies back out to the whole graph. */
 export function flyHome(x: Explorer): void {
   const { cam, controls } = x.gs;
@@ -33,11 +55,17 @@ export function flyHome(x: Explorer): void {
 }
 
 /** The element an event really started on, also inside shadow roots. */
-const origin = (e: Event): EventTarget | null => e.composedPath()[0] ?? e.target;
-const isTyping = (t: EventTarget | null): boolean => {
+export const origin = (e: Event): EventTarget | null => e.composedPath()[0] ?? e.target;
+export const isTyping = (t: EventTarget | null): boolean => {
   const el = t as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 };
+
+/** Is a key press meant for this explorer? Anywhere on a page that is only the explorer; else only
+ *  with the pointer over its stage or the focus inside it. */
+export function ownsKey(x: Explorer, e: Event, opts: NavigationOptions): boolean {
+  return opts.keyboard === 'page' || x.cam.overStage || e.composedPath().includes(x.container);
+}
 
 export interface NavigationOptions {
   /** 'page': keys work anywhere on the page (the standalone explorer); 'explorer': only inside it */
@@ -50,7 +78,7 @@ export function bindNavigation(x: Explorer, opts: NavigationOptions): void {
   x.el.panKey.textContent = isMac ? '⌘' : 'Ctrl';
   const setPanCursor = (on: boolean) => { canvas.classList.toggle('pan', on); };
   const panMode = (on: boolean) => { x.cam.spaceDown = on; controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE; setPanCursor(on); };
-  const ours = (e: Event) => opts.keyboard === 'page' || x.cam.overStage || e.composedPath().includes(x.container);
+  const ours = (e: Event) => ownsKey(x, e, opts);
 
   listen(x, controls, 'start', () => { x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false; });
   listen(x, canvas, 'pointerenter', () => { x.cam.overStage = true; });
