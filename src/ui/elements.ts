@@ -1,0 +1,68 @@
+// The explorer's DOM elements, looked up once inside its own container (never the whole document),
+// so several explorers can share a page and the explorer can live in a shadow root.
+
+export function findElements(root: ParentNode) {
+  const get = <T extends Element = HTMLElement>(id: string): T => {
+    const el = root.querySelector<Element>('#' + id);
+    if (!el) throw new Error(`Pocket Cube State Explorer: element #${id} is missing`);
+    return el as T;
+  };
+  return {
+    stage: get('stage'),
+    graph: get<HTMLCanvasElement>('graph'),
+    labels: get('labels'),
+    panKey: get('panKey'),
+    statStates: get('statStates'),
+    statEdges: get('statEdges'),
+    statLoops: get('statLoops'),
+    statDetail: get('statDetail'),
+    statBusy: get('statBusy'),
+    tip: get('tip'),
+    cubebox: get('cubebox'),
+    cube: get<HTMLCanvasElement>('cube'),
+    cbDepth: get('cbDepth'),
+    cbMove: get('cbMove'),
+    net: get('net'),
+    flHeld: get('flHeld'),
+    flCanon: get('flCanon'),
+    orientTag: get('orientTag'),
+    orientText: get('orientText'),
+    orientNote: get('orientNote'),
+    btnCopy: get<HTMLButtonElement>('btnCopy'),
+    btnNorm: get<HTMLButtonElement>('btnNorm'),
+    routes: get('routes'),
+    routesNote: get('routesNote'),
+    btnHome: get<HTMLButtonElement>('btnHome'),
+    btnPlay: get<HTMLButtonElement>('btnPlay'),
+    btnLoop: get<HTMLButtonElement>('btnLoop'),
+    btnZoomCur: get<HTMLButtonElement>('btnZoomCur'),
+    btnZoomAll: get<HTMLButtonElement>('btnZoomAll'),
+    optFollow: get<HTMLInputElement>('optFollow'),
+    optSpeed: get<HTMLInputElement>('optSpeed'),
+    speedText: get('speedText'),
+    findForm: get<HTMLFormElement>('findForm'),
+    stateInput: get<HTMLInputElement>('stateInput'),
+    btnRandom: get<HTMLButtonElement>('btnRandom'),
+    findNote: get('findNote'),
+    pad: get('pad'),
+    padRot: get('padRot'),
+    btnGrow: get<HTMLButtonElement>('btnGrow'),
+    btnAuto: get<HTMLButtonElement>('btnAuto'),
+    btnReset: get<HTMLButtonElement>('btnReset'),
+    growNote: get('growNote'),
+    optHalf: get<HTMLInputElement>('optHalf'),
+    optPace: get<HTMLInputElement>('optPace'),
+    optLabels: get<HTMLInputElement>('optLabels'),
+    labelsText: get('labelsText'),
+    optBundles: get<HTMLInputElement>('optBundles'),
+    figTree: get('figTree'),
+    figExtra: get('figExtra'),
+    figLoops: get('figLoops'),
+    pinLegend: get('pinLegend'),
+    routesIn: get('routesIn'),
+    census: get('census'),
+    viewButtons: [...root.querySelectorAll<HTMLButtonElement>('.seg [data-view]')],
+    colorButtons: [...root.querySelectorAll<HTMLButtonElement>('.seg [data-color]')],
+  };
+}
+export type Elements = ReturnType<typeof findElements>;
