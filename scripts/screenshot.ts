@@ -16,7 +16,8 @@
 // root, scripts/headless-deps.sh unpacks those into .cache/headless/, which is used when present.
 //
 // Exit code 1 if the page threw an error or growing did not finish in time.
-import { chromium } from 'playwright';
+import { chromium } from '@playwright/test';
+import { CHROMIUM_ARGS, chromiumEnv } from './chromium';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve, extname } from 'node:path';
 
@@ -51,13 +52,7 @@ if (!url) {
   url = `http://localhost:${server.port}/`;
 }
 
-const local = resolve('.cache/headless');
-const env: Record<string, string> = { ...process.env } as Record<string, string>;
-if (existsSync(join(local, 'fonts.conf'))) {
-  env.LD_LIBRARY_PATH = [join(local, 'root/usr/lib/aarch64-linux-gnu'), join(local, 'root/usr/lib/x86_64-linux-gnu'), env.LD_LIBRARY_PATH].filter(Boolean).join(':');
-  env.FONTCONFIG_FILE = join(local, 'fonts.conf');
-}
-const browser = await chromium.launch({ env, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ env: chromiumEnv(), args: CHROMIUM_ARGS });
 const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
 const errors: string[] = [];
 page.on('pageerror', (e) => { errors.push(String(e)); console.error('page error:', e); });
