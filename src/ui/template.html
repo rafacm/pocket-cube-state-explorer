@@ -1,0 +1,141 @@
+<div class="pcse">
+<div class="app">
+  <header class="bar">
+    <h1>Pocket Cube State Explorer</h1>
+    <p>Start at the solved 2×2×2. Each new layer adds every state one more turn away.</p>
+  </header>
+
+  <main class="work">
+    <section class="stage" id="stage" aria-label="3D graph of cube states">
+      <canvas id="graph"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="overlay hint" id="hint">Drag: orbit · <kbd id="panKey">Ctrl</kbd> or <kbd>Space</kbd> + drag: pan · Scroll: zoom toward pointer · Click: select a state · Click empty space or Esc: deselect · Double-click: fly close · Up close, dots become cubes</div>
+      <div class="overlay stat"><b id="statStates">1</b><span id="statEdges">states · 0 links</span><span id="statLoops"></span><span id="statDetail"></span><span class="busy" id="statBusy" hidden></span></div>
+      <div class="overlay legend">
+        <span class="k"><span class="ln" style="background:var(--e-U)"></span>U turn</span>
+        <span class="k"><span class="ln" style="background:var(--e-R)"></span>R turn</span>
+        <span class="k"><span class="ln" style="background:var(--e-F)"></span>F turn</span>
+        <span class="k"><span class="ln faint" style="background:var(--stage-ink)"></span>faint: extra link, closes a loop</span>
+        <span class="k"><span class="ln" style="background:var(--stage-muted)"></span>bundled links (outer layers)</span>
+        <span class="k"><span class="ln thick" style="background:var(--route1)"></span>routes to the current state</span>
+      </div>
+      <div class="overlay tip" id="tip" hidden></div>
+    </section>
+
+    <aside class="panel">
+      <section>
+        <div class="cubebox" id="cubebox">
+          <canvas id="cube" aria-label="Current cube state"></canvas>
+          <div class="cb-top"><span>Current state</span><span>Distance <b id="cbDepth">0</b></span></div>
+          <div class="cb-move" id="cbMove"></div>
+        </div>
+        <div class="netwrap"><div class="net" id="net" role="img" aria-label="Unfolded cube: U on top, then L F R B, then D"></div></div>
+        <div class="facelets">
+          <span></span><code class="hd" aria-hidden="true">U    R    F    D    L    B</code>
+          <span class="k">As held</span><code id="flHeld"></code>
+          <span class="k">Canonical</span><code id="flCanon"></code>
+        </div>
+        <p class="note" style="margin-top:10px"><span class="orient" id="orientTag"><span class="dot"></span><span id="orientText">Standard orientation</span></span></p>
+        <p class="note" id="orientNote" style="margin-top:4px"></p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-sm" id="btnCopy" type="button">Copy string</button>
+          <button class="btn btn-sm" id="btnNorm" type="button">Normalize orientation</button>
+        </div>
+      </section>
+
+      <section>
+        <p class="label" id="routesLabel">Shortest routes from solved</p>
+        <div class="routes" id="routes"></div>
+        <p class="note" id="routesNote"></p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-primary" id="btnHome" type="button">Solve</button>
+          <button class="btn" id="btnPlay" type="button">Play from solved</button>
+          <button class="btn" id="btnLoop" type="button">Walk the loop</button>
+          <button class="btn" id="btnZoomCur" type="button">Zoom to this state</button>
+          <button class="btn" id="btnZoomAll" type="button">Show whole graph</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="optFollow" checked><span>Camera follows the cube through the graph, one state per turn</span></label>
+        <label class="speed"><span>Walk speed</span><input type="range" id="optSpeed" min="1" max="5" step="1" value="3" aria-describedby="speedText"><span id="speedText">Normal</span></label>
+      </section>
+
+      <section>
+        <p class="label">Find a state</p>
+        <form class="find" id="findForm" autocomplete="off">
+          <input id="stateInput" type="text" spellcheck="false" aria-label="Moves or facelet string" placeholder="R U R' F2  or  WGWG:RRRR:GYGY:YBYB:OOOO:WBWB">
+          <button class="btn btn-sm" type="submit">Find</button>
+          <button class="btn btn-sm" id="btnRandom" type="button">Random</button>
+        </form>
+        <p class="note" id="findNote">Type a scramble (U R F D L B, with ' or 2, and x y z) or a facelet string in the order U R F D L B, as shown under the net. The cube plays a shortest route to it, and the camera flies there.</p>
+      </section>
+
+      <section>
+        <p class="label">Turn a layer</p>
+        <div class="pad" id="pad"></div>
+        <p class="label" style="margin-top:14px">Turn the whole cube</p>
+        <div class="pad" id="padRot" style="grid-template-columns:repeat(6, minmax(0, 1fr))"></div>
+        <p class="note">D, L and B turns move the yellow-orange-blue corner, and x, y, z only change how you hold the cube. The graph still finds the right state, because it compares canonical forms.</p>
+      </section>
+
+      <section>
+        <p class="label">Grow the graph</p>
+        <div class="row">
+          <button class="btn btn-primary" id="btnGrow" type="button">Grow layer 2</button>
+          <button class="btn" id="btnAuto" type="button" aria-pressed="false">Auto-grow</button>
+          <button class="btn" id="btnReset" type="button">Start over</button>
+        </div>
+        <p class="note" id="growNote"></p>
+        <label class="toggle"><input type="checkbox" id="optHalf"><span>Count half turns (U2, R2, F2) as one move</span></label>
+        <label class="toggle"><input type="checkbox" id="optPace" checked><span>Animate the outer layers, about 5 s each (off: as fast as your computer allows)</span></label>
+        <label class="toggle"><input type="checkbox" id="optLabels" checked><span id="labelsText">Label every link with its turn</span></label>
+      </section>
+
+      <section>
+        <p class="label">A graph, not a tree</p>
+        <div class="seg" role="group" aria-label="Which links to show">
+          <button type="button" data-view="all" aria-pressed="true">All links</button>
+          <button type="button" data-view="tree" aria-pressed="false">Tree only</button>
+          <button type="button" data-view="extra" aria-pressed="false">Extra links</button>
+        </div>
+        <div class="figures">
+          <div class="fig"><b id="figTree">0</b><span>tree links, one per state</span></div>
+          <div class="fig"><b id="figExtra">0</b><span>extra links</span></div>
+          <div class="fig loops"><b id="figLoops">0</b><span>independent loops</span></div>
+        </div>
+        <p class="note">A tree gives every state exactly one way back to solved. Here, every link beyond the tree joins two states that were already connected, so it closes a loop. "Tree only" shows the first route found to each state; "Extra links" shows only the links that make it a graph.</p>
+        <label class="toggle"><input type="checkbox" id="optBundles" checked><span>Bundle the links between dot layers: one line per pair of regions, darker the more links it carries (pink: extra links)</span></label>
+        <p class="label" style="margin-top:16px">Colour dots by</p>
+        <div class="seg" role="group" aria-label="Colour dots by">
+          <button type="button" data-color="routes" aria-pressed="true">Routes in</button>
+          <button type="button" data-color="layer" aria-pressed="false">Layer</button>
+        </div>
+        <div class="pinlegend" id="pinLegend">
+          <span><i style="background:#9AA3B5"></i>1 route</span><span><i style="background:#2E9BC6"></i>2</span><span><i style="background:#3E63DD"></i>3</span><span><i style="background:#7B4FD6"></i>4</span><span><i style="background:#C23FA8"></i>5</span><span><i style="background:#E0337E"></i>6+</span>
+        </div>
+        <p class="note">Routes in: how many neighbours a state has in the layer inside it, so how many shortest routes reach it with their last turn. Grey states are reached one way only; the more colour, the more routes merge there.</p>
+        <p class="label" style="margin-top:14px">Routes into each state, by layer</p>
+        <div id="routesIn"></div>
+      </section>
+
+      <section>
+        <p class="label">States by distance from solved</p>
+        <p class="note" style="margin:0 0 8px">Bar length shows each layer's size on a log scale; the fill shows how much is drawn. <span class="dotmark"></span> drawn as dots.</p>
+        <table>
+          <thead><tr><th>Turns</th><th class="n">Drawn</th><th class="n">All states</th><th class="barcell"></th></tr></thead>
+          <tbody id="census"></tbody>
+        </table>
+      </section>
+
+      <section class="about">
+        <p class="label">How the graph is built</p>
+        <p>Turning the whole cube in your hands never makes a new state. Counting every way of holding it, there are 88,179,840 arrangements, but each state appears in 24 orientations, so there are 3,674,160 distinct states.</p>
+        <p>The canonical form picks one of the 24: the one with the yellow-orange-blue corner at down-left-back, yellow facing down. A solved cube then shows white on top and green in front. The graph grows with U, R and F turns only, which never move that corner, so every state in it is already canonical.</p>
+        <p>Facelet strings list the faces in the order U R F D L B, each read row by row as it appears in the net, with W Y R O G B for the colors.</p>
+        <p>Each cube in the graph is a real state, drawn with its actual stickers. Its distance from the center is the fewest turns needed to reach it. Small labels name the turn that leads outward along a link; click a cube and framed labels appear around it, one for each turn you can make from it (click one to make that turn).</p>
+        <p>Layers beyond 7 (5 with half turns) are drawn as dots, coloured from blue to pink by distance. Every layer sits on a sphere sized for its states, so the gaps between layers grow steadily from the centre. The first dot layer is evened out over its sphere once (layer 7 leaves it crowded on one side); after that, each dot layer is cut into small patches and the states that want a patch (next to the state they were reached from) are laid out inside it, at least 9 units apart. The sphere is made just large enough for the most crowded patch, so busy regions look dense and quiet regions sparse: that unevenness is real structure. Zoom toward any part (scroll with the pointer over it, pan with Space or Cmd/Ctrl + drag, or double-click) and the nearest dots, up to 20,000, become cubes with their real stickers; the closest also get their links and turn labels. Each state gets a number from its corner positions and twists, so the page can keep all 3,674,160 of them in a few small arrays. Click any cube or dot to select it: the cube jumps to that state and its route to solved lights up. Solve walks it back; Play from solved builds it up turn by turn.</p>
+        <p>The layers grow fast, then shrink: layer 11 holds 1,350,852 states, but only 276 states need the full 14 quarter turns. Those are the positions farthest from solved.</p>
+        <p>With quarter turns only, no link joins two states at the same distance: every quarter turn flips the corner parity. Switch on half turns and links inside a layer appear.</p>
+      </section>
+    </aside>
+  </main>
+</div>
+</div>

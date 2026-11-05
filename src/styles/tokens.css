@@ -1,0 +1,36 @@
+/* Design tokens. On :root for the standalone page, on :host inside <pocket-cube-explorer>. */
+:root, :host {
+  --bg: #ECEEF3;
+  --surface: #FFFFFF;
+  --ink: #151922;
+  --muted: #5A6373;
+  --line: #D4D9E2;
+  --accent: #D31F6C;
+  --accent-ink: #FFFFFF;
+  /* the stage is paper white in both themes, by request */
+  --stage: #F6F4EF;
+  --stage-ink: #1E2230;
+  --stage-muted: #6B7080;
+  --stage-chip: rgba(255, 255, 255, 0.88);
+  --stage-border: rgba(30, 34, 48, 0.14);
+  /* cube sticker colors: physical object colors, identical in both themes */
+  --cube-body: #16181D;
+  --c-U: #F4F5F7; --c-D: #FFD200; --c-R: #D0263B; --c-L: #FF6A13; --c-F: #10A05C; --c-B: #1E63D8;
+  /* graph edge colors, drawn on the stage */
+  --e-U: #5E6574; --e-R: #D7263D; --e-F: #14915A;
+  /* highlighted routes */
+  --route1: #E0337E; --route2: #3E63DD;
+  --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]), :host(:not([data-theme="light"])) {
+    --bg: #0E1117; --surface: #151922; --ink: #E5E8EE; --muted: #8C95A7; --line: #262C38;
+    --accent: #FF4F9A; --accent-ink: #16060D; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"], :host([data-theme="dark"]) {
+  --bg: #0E1117; --surface: #151922; --ink: #E5E8EE; --muted: #8C95A7; --line: #262C38;
+  --accent: #FF4F9A; --accent-ink: #16060D; color-scheme: dark;
+}

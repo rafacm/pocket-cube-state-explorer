@@ -1,0 +1,45 @@
+/* ---------- stage ---------- */
+.stage { position: relative; background: var(--stage); min-height: 0; overflow: hidden; color: var(--stage-ink); }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas.pointing { cursor: pointer; }
+.stage canvas.pan { cursor: grab; }
+.stage canvas.pan:active { cursor: grabbing; }
+.hint kbd { font-family: inherit; font-size: 10.5px; padding: 0 4px; border: 1px solid var(--stage-border); border-radius: 3px; background: var(--stage-chip); color: var(--stage-ink); }
+.overlay { position: absolute; font-size: 12px; pointer-events: none; }
+.hint { top: 12px; left: max(14px, env(safe-area-inset-left, 0px)); right: 250px; color: var(--stage-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; }
+.legend {
+  bottom: 12px; left: max(14px, env(safe-area-inset-left, 0px));
+  display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+  background: var(--stage-chip); border: 1px solid var(--stage-border); border-radius: 8px; padding: 8px 11px;
+  max-width: calc(100% - 28px);
+}
+.legend .k { display: inline-flex; align-items: center; gap: 6px; }
+.legend .ln { width: 18px; height: 2px; border-radius: 1px; }
+.legend .ln.thick { height: 4px; }
+.legend .faint { opacity: 0.4; }
+.stat {
+  top: 12px; right: max(14px, env(safe-area-inset-right, 0px));
+  text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; line-height: 1.35;
+}
+.stat b { display: block; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.stat span { display: block; color: var(--stage-muted); font-size: 11px; }
+.stat .busy { margin-top: 6px; color: var(--stage-ink); font-weight: 600; }
+.stat .busy i { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: var(--stage-border); overflow: hidden; }
+.stat .busy i b { display: block; height: 100%; width: 0; background: var(--route1); }
+.tip {
+  background: var(--stage-chip); border: 1px solid var(--stage-border); border-radius: 6px; box-shadow: 0 2px 8px rgba(30,34,48,0.08);
+  padding: 5px 8px; font-family: var(--font-mono); font-size: 12px; white-space: nowrap; z-index: 3;
+}
+.tip .d { color: var(--stage-muted); margin-right: 6px; }
+
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.lab {
+  position: absolute; left: 0; top: 0; will-change: transform;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; line-height: 1.3;
+  padding: 0 4px; border-radius: 4px; background: rgba(246, 244, 239, 0.82); color: var(--lc); white-space: nowrap;
+}
+.lab.sel {
+  z-index: 2; font-size: 13px; padding: 2px 7px; border: 1.5px solid var(--lc); background: #FFFFFF; color: var(--stage-ink);
+  pointer-events: auto; cursor: pointer; box-shadow: 0 1px 4px rgba(30,34,48,0.12);
+}
+.lab.sel:hover { background: var(--lc); color: #FFFFFF; }
