@@ -119,3 +119,15 @@ test('starts over', async ({ page }) => {
   await expect(page.locator('#statStates')).toHaveText('1');
   await expect(page.locator('#btnGrow')).toHaveText('Grow layer 1');
 });
+
+test('has a link preview: Open Graph tags and the image they point to', async ({ page, request }) => {
+  await page.goto('/');
+  const meta = (p: string) => page.locator(`meta[property="${p}"]`).getAttribute('content');
+  expect(await meta('og:title')).toBe('Pocket Cube State Explorer');
+  expect(await meta('og:image')).toBe('https://pocket-cube-state-explorer.vercel.app/og.png');
+  expect(await page.locator('meta[name="twitter:card"]').getAttribute('content')).toBe('summary_large_image');
+  const og = await request.get('/og.png');
+  expect(og.status()).toBe(200);
+  expect(og.headers()['content-type']).toBe('image/png');
+  expect((await request.get('/favicon.svg')).status()).toBe(200);
+});
