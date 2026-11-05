@@ -8,7 +8,7 @@ import type { Edge, GNode } from '../graph/graph';
 import type { Theme } from '../explorer/theme';
 import { createCubeMaterial, packStickers } from './cube-shader';
 
-/** Most cube-layer states drawn at once (layers 0..7 hold 45,071). */
+/** Most cube-layer states drawn at once (layers 0..7 hold 44,971). */
 export const CAP = 46000;
 export const TUBES = 220;
 
