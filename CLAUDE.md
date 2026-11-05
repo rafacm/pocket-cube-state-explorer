@@ -127,6 +127,10 @@ import each other freely (only functions, nothing runs at import time).
   and the explorer offers to restart if it does not (`createExplorer` restarts in place).
 - Typed scratch buffers at module level (layout hash, relax hash, detail candidates) are shared by
   all explorers on a page; that is safe only because each use finishes within one synchronous call.
+- Fragment shaders on Apple GPUs (every iPhone and iPad browser) may compute at lower precision
+  than highp promises: the packed sticker numbers (up to 262,143) are decoded in the vertex shader
+  (`render/cube-shader.ts`), and the fragment shader only picks finished colours. Keep large-number
+  maths out of fragment shaders; headless Chromium will not show the problem.
 - Vite's library mode keeps whitespace in ES output; the embed config forces full minification.
 
 ## Testing without a GPU
