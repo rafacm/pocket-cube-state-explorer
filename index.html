@@ -1,0 +1,2490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Every state of the 2x2x2 Rubik's Pocket Cube as a 3D graph, grown layer by layer from the solved cube.">
+<style>
+/* page reset (the artifact viewer supplied this before) */
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Pocket Cube State Graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: a workbench. A paper-white 3D stage holds the growing state graph; an instrument panel on the right holds the live cube, the routes, the move pad and the layer census. Stacks on phones. */
+:root {
+  --bg: #ECEEF3;
+  --surface: #FFFFFF;
+  --ink: #151922;
+  --muted: #5A6373;
+  --line: #D4D9E2;
+  --accent: #D31F6C;
+  --accent-ink: #FFFFFF;
+  /* the stage is paper white in both themes, by request */
+  --stage: #F6F4EF;
+  --stage-ink: #1E2230;
+  --stage-muted: #6B7080;
+  --stage-chip: rgba(255, 255, 255, 0.88);
+  --stage-border: rgba(30, 34, 48, 0.14);
+  /* cube sticker colors: physical object colors, identical in both themes */
+  --cube-body: #16181D;
+  --c-U: #F4F5F7; --c-D: #FFD200; --c-R: #D0263B; --c-L: #FF6A13; --c-F: #10A05C; --c-B: #1E63D8;
+  /* graph edge colors, drawn on the stage */
+  --e-U: #5E6574; --e-R: #D7263D; --e-F: #14915A;
+  /* highlighted routes */
+  --route1: #E0337E; --route2: #3E63DD;
+  --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1117; --surface: #151922; --ink: #E5E8EE; --muted: #8C95A7; --line: #262C38;
+    --accent: #FF4F9A; --accent-ink: #16060D; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1117; --surface: #151922; --ink: #E5E8EE; --muted: #8C95A7; --line: #262C38;
+  --accent: #FF4F9A; --accent-ink: #16060D; color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
+
+.bar {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px;
+  padding-block: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 18px; letter-spacing: -0.01em; text-wrap: balance; }
+.bar p { margin: 0; color: var(--muted); font-size: 14px; min-width: 0; }
+
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 0; }
+
+/* ---------- stage ---------- */
+.stage { position: relative; background: var(--stage); min-height: 0; overflow: hidden; color: var(--stage-ink); }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas.pointing { cursor: pointer; }
+.stage canvas.pan { cursor: grab; }
+.stage canvas.pan:active { cursor: grabbing; }
+.hint kbd { font-family: inherit; font-size: 10.5px; padding: 0 4px; border: 1px solid var(--stage-border); border-radius: 3px; background: var(--stage-chip); color: var(--stage-ink); }
+.overlay { position: absolute; font-size: 12px; pointer-events: none; }
+.hint { top: 12px; left: max(14px, env(safe-area-inset-left, 0px)); right: 250px; color: var(--stage-muted); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; }
+.legend {
+  bottom: 12px; left: max(14px, env(safe-area-inset-left, 0px));
+  display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+  background: var(--stage-chip); border: 1px solid var(--stage-border); border-radius: 8px; padding: 8px 11px;
+  max-width: calc(100% - 28px);
+}
+.legend .k { display: inline-flex; align-items: center; gap: 6px; }
+.legend .ln { width: 18px; height: 2px; border-radius: 1px; }
+.legend .ln.thick { height: 4px; }
+.legend .faint { opacity: 0.4; }
+.stat {
+  top: 12px; right: max(14px, env(safe-area-inset-right, 0px));
+  text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; line-height: 1.35;
+}
+.stat b { display: block; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.stat span { display: block; color: var(--stage-muted); font-size: 11px; }
+.stat .busy { margin-top: 6px; color: var(--stage-ink); font-weight: 600; }
+.stat .busy i { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: var(--stage-border); overflow: hidden; }
+.stat .busy i b { display: block; height: 100%; width: 0; background: var(--route1); }
+.tip {
+  background: var(--stage-chip); border: 1px solid var(--stage-border); border-radius: 6px; box-shadow: 0 2px 8px rgba(30,34,48,0.08);
+  padding: 5px 8px; font-family: var(--font-mono); font-size: 12px; white-space: nowrap; z-index: 3;
+}
+.tip .d { color: var(--stage-muted); margin-right: 6px; }
+
+.labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.lab {
+  position: absolute; left: 0; top: 0; will-change: transform;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; line-height: 1.3;
+  padding: 0 4px; border-radius: 4px; background: rgba(246, 244, 239, 0.82); color: var(--lc); white-space: nowrap;
+}
+.lab.sel {
+  z-index: 2; font-size: 13px; padding: 2px 7px; border: 1.5px solid var(--lc); background: #FFFFFF; color: var(--stage-ink);
+  pointer-events: auto; cursor: pointer; box-shadow: 0 1px 4px rgba(30,34,48,0.12);
+}
+.lab.sel:hover { background: var(--lc); color: #FFFFFF; }
+
+/* ---------- panel ---------- */
+.panel {
+  min-height: 0; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line);
+  padding-block: 16px 28px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 22px;
+}
+.label { font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.note { color: var(--muted); font-size: 13px; margin: 8px 0 0; max-width: 65ch; }
+
+.cubebox { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; aspect-ratio: 1 / 0.8; max-width: 100%; }
+.cubebox canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.cb-top { position: absolute; top: 10px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--stage-muted); }
+.cb-top b { color: var(--stage-ink); font-weight: 600; }
+.cb-move { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; pointer-events: none;
+  font-family: var(--font-mono); font-weight: 600; font-size: 26px; color: var(--stage-ink); opacity: 0; transition: opacity .15s; }
+.cb-move.on { opacity: 1; }
+
+.routes { display: flex; flex-direction: column; gap: 6px; }
+.route { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rdot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; margin-right: 2px; }
+.route.r1 .rdot { background: var(--route1); }
+.route.r2 .rdot { background: var(--route2); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-weight: 600; font-size: 13px;
+  padding: 3px 8px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); }
+.sw { width: 10px; height: 10px; border-radius: 2px; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); flex: none; }
+
+.pad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mv.rot { border-style: dashed; background: transparent; }
+.netwrap { display: flex; justify-content: center; margin-top: 14px; }
+.net { display: grid; grid-template-columns: repeat(4, auto); grid-template-rows: repeat(3, auto); gap: 4px; }
+.face { position: relative; display: grid; grid-template-columns: repeat(2, 22px); grid-template-rows: repeat(2, 22px); gap: 2px; padding: 2px; background: var(--cube-body); border-radius: 4px; }
+.face .st { border-radius: 3px; background: var(--c-U); }
+.facelets { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px 12px; align-items: baseline; margin-top: 16px; }
+.facelets .k { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.facelets code { font-family: var(--font-mono); font-size: 13px; font-weight: 600; white-space: pre; overflow-x: auto; letter-spacing: 0.03em; }
+.facelets code.hd { color: var(--muted); font-weight: 400; }
+.facelets code.same { color: var(--muted); }
+.btn-sm { padding: 5px 10px; font-size: 13px; }
+.find { display: flex; flex-wrap: wrap; gap: 6px; }
+.find input { flex: 1 1 180px; min-width: 0; font-family: var(--font-mono); font-size: 13px; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.find input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.note.err { color: var(--accent); }
+.orient { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.orient .dot { width: 8px; height: 8px; border-radius: 50%; background: #2F9E62; }
+.orient.off .dot { background: #E5484D; }
+.mv { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-family: var(--font-mono); font-weight: 600; font-size: 15px; }
+.mv:hover { border-color: var(--ink); }
+.mv:active { transform: translateY(1px); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 9px 13px; cursor: pointer; font-weight: 500; font-size: 14px; }
+.btn:hover { border-color: var(--ink); }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn-primary:hover { border-color: var(--accent); filter: brightness(1.06); }
+.btn:disabled { opacity: 0.45; cursor: default; filter: none; }
+.toggle { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; font-size: 14px; cursor: pointer; }
+.toggle input { margin-top: 3px; accent-color: var(--accent); }
+.speed { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 14px; }
+.speed input { flex: 1 1 auto; min-width: 0; max-width: 180px; accent-color: var(--accent); }
+.speed #speedText { color: var(--muted); font-size: 13px; min-width: 6.5em; }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; max-width: 100%; }
+.seg button { border: 0; background: transparent; padding: 8px 11px; cursor: pointer; font-size: 13.5px; font-weight: 500; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.fig { border-top: 2px solid var(--line); padding-top: 6px; min-width: 0; }
+.fig b { display: block; font-family: var(--font-mono); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fig span { font-size: 12px; color: var(--muted); }
+.fig.loops { border-top-color: var(--accent); }
+
+table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 0 6px 6px 0; }
+td { padding: 3px 6px 3px 0; border-top: 1px solid var(--line); }
+td.n, th.n { text-align: right; }
+tr.off td { color: var(--muted); }
+tr.cur td { font-weight: 600; }
+.barcell { width: 32%; padding-right: 0; }
+.track { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; opacity: 0.9; }
+.dotmark { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--route2); vertical-align: middle; margin-left: 3px; }
+.fill { height: 100%; border-radius: 3px; background: var(--accent); }
+
+.pinlegend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+.pinlegend span { display: inline-flex; align-items: center; gap: 5px; }
+.pinlegend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.rin { display: grid; grid-template-columns: 2.2em minmax(0, 1fr) 3em; gap: 8px; align-items: center; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; padding: 2px 0; }
+.rin.hd { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.rbar { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--bg); }
+.rbar i { display: block; height: 100%; }
+.rmean { text-align: right; }
+.about { color: var(--muted); font-size: 13.5px; }
+.about p { margin: 0 0 8px; max-width: 65ch; }
+
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  .app { height: auto; grid-template-rows: auto auto; }
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .stage { height: 62vh; min-height: 380px; }
+  .hint { right: 14px; top: auto; bottom: 64px; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .cubebox { max-width: 440px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <h1>Pocket Cube State Graph</h1>
+    <p>Start at the solved 2×2×2. Each new layer adds every state one more turn away.</p>
+  </header>
+
+  <main class="work">
+    <section class="stage" id="stage" aria-label="3D graph of cube states">
+      <canvas id="graph"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="overlay hint" id="hint">Drag: orbit · <kbd id="panKey">Ctrl</kbd> or <kbd>Space</kbd> + drag: pan · Scroll: zoom toward pointer · Click: select a state · Click empty space or Esc: deselect · Double-click: fly close · Up close, dots become cubes</div>
+      <div class="overlay stat"><b id="statStates">1</b><span id="statEdges">states · 0 links</span><span id="statLoops"></span><span id="statDetail"></span><span class="busy" id="statBusy" hidden></span></div>
+      <div class="overlay legend">
+        <span class="k"><span class="ln" style="background:var(--e-U)"></span>U turn</span>
+        <span class="k"><span class="ln" style="background:var(--e-R)"></span>R turn</span>
+        <span class="k"><span class="ln" style="background:var(--e-F)"></span>F turn</span>
+        <span class="k"><span class="ln faint" style="background:var(--stage-ink)"></span>faint: extra link, closes a loop</span>
+        <span class="k"><span class="ln" style="background:var(--stage-muted)"></span>bundled links (outer layers)</span>
+        <span class="k"><span class="ln thick" style="background:var(--route1)"></span>routes to the current state</span>
+      </div>
+      <div class="overlay tip" id="tip" hidden></div>
+    </section>
+
+    <aside class="panel">
+      <section>
+        <div class="cubebox" id="cubebox">
+          <canvas id="cube" aria-label="Current cube state"></canvas>
+          <div class="cb-top"><span>Current state</span><span>Distance <b id="cbDepth">0</b></span></div>
+          <div class="cb-move" id="cbMove"></div>
+        </div>
+        <div class="netwrap"><div class="net" id="net" role="img" aria-label="Unfolded cube: U on top, then L F R B, then D"></div></div>
+        <div class="facelets">
+          <span></span><code class="hd" aria-hidden="true">U    R    F    D    L    B</code>
+          <span class="k">As held</span><code id="flHeld"></code>
+          <span class="k">Canonical</span><code id="flCanon"></code>
+        </div>
+        <p class="note" style="margin-top:10px"><span class="orient" id="orientTag"><span class="dot"></span><span id="orientText">Standard orientation</span></span></p>
+        <p class="note" id="orientNote" style="margin-top:4px"></p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-sm" id="btnCopy" type="button">Copy string</button>
+          <button class="btn btn-sm" id="btnNorm" type="button">Normalize orientation</button>
+        </div>
+      </section>
+
+      <section>
+        <p class="label" id="routesLabel">Shortest routes from solved</p>
+        <div class="routes" id="routes"></div>
+        <p class="note" id="routesNote"></p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-primary" id="btnHome" type="button">Solve</button>
+          <button class="btn" id="btnPlay" type="button">Play from solved</button>
+          <button class="btn" id="btnLoop" type="button">Walk the loop</button>
+          <button class="btn" id="btnZoomCur" type="button">Zoom to this state</button>
+          <button class="btn" id="btnZoomAll" type="button">Show whole graph</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="optFollow" checked><span>Camera follows the cube through the graph, one state per turn</span></label>
+        <label class="speed"><span>Walk speed</span><input type="range" id="optSpeed" min="1" max="5" step="1" value="3" aria-describedby="speedText"><span id="speedText">Normal</span></label>
+      </section>
+
+      <section>
+        <p class="label">Find a state</p>
+        <form class="find" id="findForm" autocomplete="off">
+          <input id="stateInput" type="text" spellcheck="false" aria-label="Moves or facelet string" placeholder="R U R' F2  or  WGWG:RRRR:GYGY:YBYB:OOOO:WBWB">
+          <button class="btn btn-sm" type="submit">Find</button>
+          <button class="btn btn-sm" id="btnRandom" type="button">Random</button>
+        </form>
+        <p class="note" id="findNote">Type a scramble (U R F D L B, with ' or 2, and x y z) or a facelet string in the order U R F D L B, as shown under the net. The cube plays a shortest route to it, and the camera flies there.</p>
+      </section>
+
+      <section>
+        <p class="label">Turn a layer</p>
+        <div class="pad" id="pad"></div>
+        <p class="label" style="margin-top:14px">Turn the whole cube</p>
+        <div class="pad" id="padRot" style="grid-template-columns:repeat(6, minmax(0, 1fr))"></div>
+        <p class="note">D, L and B turns move the yellow-orange-blue corner, and x, y, z only change how you hold the cube. The graph still finds the right state, because it compares canonical forms.</p>
+      </section>
+
+      <section>
+        <p class="label">Grow the graph</p>
+        <div class="row">
+          <button class="btn btn-primary" id="btnGrow" type="button">Grow layer 2</button>
+          <button class="btn" id="btnAuto" type="button" aria-pressed="false">Auto-grow</button>
+          <button class="btn" id="btnReset" type="button">Start over</button>
+        </div>
+        <p class="note" id="growNote"></p>
+        <label class="toggle"><input type="checkbox" id="optHalf"><span>Count half turns (U2, R2, F2) as one move</span></label>
+        <label class="toggle"><input type="checkbox" id="optPace" checked><span>Animate the outer layers, about 5 s each (off: as fast as your computer allows)</span></label>
+        <label class="toggle"><input type="checkbox" id="optLabels" checked><span id="labelsText">Label every link with its turn</span></label>
+      </section>
+
+      <section>
+        <p class="label">A graph, not a tree</p>
+        <div class="seg" role="group" aria-label="Which links to show">
+          <button type="button" data-view="all" aria-pressed="true">All links</button>
+          <button type="button" data-view="tree" aria-pressed="false">Tree only</button>
+          <button type="button" data-view="extra" aria-pressed="false">Extra links</button>
+        </div>
+        <div class="figures">
+          <div class="fig"><b id="figTree">0</b><span>tree links, one per state</span></div>
+          <div class="fig"><b id="figExtra">0</b><span>extra links</span></div>
+          <div class="fig loops"><b id="figLoops">0</b><span>independent loops</span></div>
+        </div>
+        <p class="note">A tree gives every state exactly one way back to solved. Here, every link beyond the tree joins two states that were already connected, so it closes a loop. "Tree only" shows the first route found to each state; "Extra links" shows only the links that make it a graph.</p>
+        <label class="toggle"><input type="checkbox" id="optBundles" checked><span>Bundle the links between dot layers: one line per pair of regions, darker the more links it carries (pink: extra links)</span></label>
+        <p class="label" style="margin-top:16px">Colour dots by</p>
+        <div class="seg" role="group" aria-label="Colour dots by">
+          <button type="button" data-color="routes" aria-pressed="true">Routes in</button>
+          <button type="button" data-color="layer" aria-pressed="false">Layer</button>
+        </div>
+        <div class="pinlegend" id="pinLegend">
+          <span><i style="background:#9AA3B5"></i>1 route</span><span><i style="background:#2E9BC6"></i>2</span><span><i style="background:#3E63DD"></i>3</span><span><i style="background:#7B4FD6"></i>4</span><span><i style="background:#C23FA8"></i>5</span><span><i style="background:#E0337E"></i>6+</span>
+        </div>
+        <p class="note">Routes in: how many neighbours a state has in the layer inside it, so how many shortest routes reach it with their last turn. Grey states are reached one way only; the more colour, the more routes merge there.</p>
+        <p class="label" style="margin-top:14px">Routes into each state, by layer</p>
+        <div id="routesIn"></div>
+      </section>
+
+      <section>
+        <p class="label">States by distance from solved</p>
+        <p class="note" style="margin:0 0 8px">Bar length shows each layer's size on a log scale; the fill shows how much is drawn. <span class="dotmark"></span> drawn as dots.</p>
+        <table>
+          <thead><tr><th>Turns</th><th class="n">Drawn</th><th class="n">All states</th><th class="barcell"></th></tr></thead>
+          <tbody id="census"></tbody>
+        </table>
+      </section>
+
+      <section class="about">
+        <p class="label">How the graph is built</p>
+        <p>Turning the whole cube in your hands never makes a new state. Counting every way of holding it, there are 88,179,840 arrangements, but each state appears in 24 orientations, so there are 3,674,160 distinct states.</p>
+        <p>The canonical form picks one of the 24: the one with the yellow-orange-blue corner at down-left-back, yellow facing down. A solved cube then shows white on top and green in front. The graph grows with U, R and F turns only, which never move that corner, so every state in it is already canonical.</p>
+        <p>Facelet strings list the faces in the order U R F D L B, each read row by row as it appears in the net, with W Y R O G B for the colors.</p>
+        <p>Each cube in the graph is a real state, drawn with its actual stickers. Its distance from the center is the fewest turns needed to reach it. Small labels name the turn that leads outward along a link; click a cube and framed labels appear around it, one for each turn you can make from it (click one to make that turn).</p>
+        <p>Layers beyond 7 (5 with half turns) are drawn as dots, coloured from blue to pink by distance. Every layer sits on a sphere sized for its states, so the gaps between layers grow steadily from the centre. The first dot layer is evened out over its sphere once (layer 7 leaves it crowded on one side); after that, each dot layer is cut into small patches and the states that want a patch (next to the state they were reached from) are laid out inside it, at least 9 units apart. The sphere is made just large enough for the most crowded patch, so busy regions look dense and quiet regions sparse: that unevenness is real structure. Zoom toward any part (scroll with the pointer over it, pan with Space or Cmd/Ctrl + drag, or double-click) and the nearest dots, up to 20,000, become cubes with their real stickers; the closest also get their links and turn labels. Each state gets a number from its corner positions and twists, so the page can keep all 3,674,160 of them in a few small arrays. Click any cube or dot to select it: the cube jumps to that state and its route to solved lights up. Solve walks it back; Play from solved builds it up turn by turn.</p>
+        <p>The layers grow fast, then shrink: layer 11 holds 1,350,852 states, but only 276 states need the full 14 quarter turns. Those are the positions farthest from solved.</p>
+        <p>With quarter turns only, no link joins two states at the same distance: every quarter turn flips the corner parity. Switch on half turns and links inside a layer appear.</p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+'use strict';
+
+/*MODEL-START*/
+// ---------- Cube model ----------
+// Coordinates: x = right, y = up, z = front. Cubies sit at (±1, ±1, ±1).
+// Faces 0..5 = U D R L F B. A sticker slot is (cubie position, outward normal).
+const FACE_AXIS = [1, 1, 0, 0, 2, 2];
+const FACE_SIGN = [1, -1, 1, -1, 1, -1];
+const FACE_NAME = ['U', 'D', 'R', 'L', 'F', 'B'];
+function otherAxes(ax) { return ax === 0 ? [1, 2] : ax === 1 ? [0, 2] : [0, 1]; }
+function faceOf(n) { for (let f = 0; f < 6; f++) if (n[FACE_AXIS[f]] === FACE_SIGN[f]) return f; return -1; }
+function slotIndex(p, n) {
+  const f = faceOf(n), o = otherAxes(FACE_AXIS[f]);
+  return f * 4 + (p[o[0]] > 0 ? 2 : 0) + (p[o[1]] > 0 ? 1 : 0);
+}
+const SLOTS = [];
+for (let f = 0; f < 6; f++) {
+  const ax = FACE_AXIS[f], o = otherAxes(ax);
+  for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
+    const n = [0, 0, 0], p = [0, 0, 0];
+    n[ax] = FACE_SIGN[f]; p[ax] = FACE_SIGN[f]; p[o[0]] = a ? 1 : -1; p[o[1]] = b ? 1 : -1;
+    SLOTS.push({ p, n, f });
+  }
+}
+// Clockwise quarter turn seen from the + end of the axis (= -90° about it).
+function rotCW(v, ax) {
+  const x = v[0], y = v[1], z = v[2];
+  if (ax === 1) return [-z, y, x];
+  if (ax === 0) return [x, z, -y];
+  return [y, -x, z];
+}
+function quarterPerm(ax, sel) {
+  if (sel == null) sel = 1;
+  const dst = new Array(24);
+  for (let s = 0; s < 24; s++) {
+    const { p, n } = SLOTS[s];
+    dst[s] = (sel === 0 || p[ax] === sel) ? slotIndex(rotCW(p, ax), rotCW(n, ax)) : s;
+  }
+  return dst;
+}
+function powerPerm(d, times) {
+  let cur = Array.from({ length: 24 }, (_, i) => i);
+  for (let t = 0; t < times; t++) cur = cur.map(x => d[x]);
+  return cur;
+}
+// Only U, R, F turn: the D-L-B corner stays fixed, which factors out whole-cube rotations.
+const BASE = [{ n: 'U', ax: 1, f: 0 }, { n: 'R', ax: 0, f: 2 }, { n: 'F', ax: 2, f: 4 }];
+const ALL_MOVES = [];
+for (const b of BASE) {
+  const q = quarterPerm(b.ax);
+  ALL_MOVES.push({ name: b.n, ax: b.ax, sel: 1, q: 1, face: b.f, turns: 1, perm: q });
+  ALL_MOVES.push({ name: b.n + "'", ax: b.ax, sel: 1, q: -1, face: b.f, turns: -1, perm: powerPerm(q, 3) });
+  ALL_MOVES.push({ name: b.n + '2', ax: b.ax, sel: 1, q: 2, face: b.f, turns: 2, perm: powerPerm(q, 2) });
+}
+function inverseOf(mv) {
+  const t = mv.turns === 2 ? 2 : -mv.turns;
+  return ALL_MOVES.find(m => m.ax === mv.ax && m.turns === t);
+}
+function applyMove(key, mv) {
+  const out = new Array(24);
+  for (let s = 0; s < 24; s++) out[mv.perm[s]] = key.charCodeAt(s);
+  return String.fromCharCode.apply(null, out);
+}
+const SOLVED = SLOTS.map(s => String(s.f)).join('');
+
+// q = signed quarter turns, clockwise as seen from the + end of the axis; sel = 1, -1 or 0 (whole cube)
+function makeMove(name, ax, sel, q, face, kind) {
+  return { name, ax, sel, q, face, kind, turns: q, perm: powerPerm(quarterPerm(ax, sel), ((q % 4) + 4) % 4) };
+}
+// D, L, B turn clockwise as seen from below, the left and the back.
+const OPP = [{ n: 'D', ax: 1, f: 1 }, { n: 'L', ax: 0, f: 3 }, { n: 'B', ax: 2, f: 5 }];
+const OPP_MOVES = [];
+for (const b of OPP) OPP_MOVES.push(makeMove(b.n, b.ax, -1, -1, b.f, 'turn'), makeMove(b.n + "'", b.ax, -1, 1, b.f, 'turn'), makeMove(b.n + '2', b.ax, -1, 2, b.f, 'turn'));
+// Whole-cube rotations x, y, z follow R, U, F.
+const ROT_MOVES = [];
+for (const [n, ax] of [['x', 0], ['y', 1], ['z', 2]]) ROT_MOVES.push(makeMove(n, ax, 0, 1, -1, 'rot'), makeMove(n + "'", ax, 0, -1, -1, 'rot'), makeMove(n + '2', ax, 0, 2, -1, 'rot'));
+// The 24 orientations, each with a shortest rotation sequence that produces it (identity first).
+const ORIENTS = (function () {
+  const id = Array.from({ length: 24 }, (_, i) => String.fromCharCode(65 + i)).join('');
+  const seqs = new Map([[id, []]]), order = [id];
+  for (let h = 0; h < order.length; h++) for (const r of ROT_MOVES) {
+    const k = applyMove(order[h], r);
+    if (!seqs.has(k)) { seqs.set(k, seqs.get(order[h]).concat([r])); order.push(k); }
+  }
+  return order.map(k => { const perm = new Array(24); for (let t = 0; t < 24; t++) perm[k.charCodeAt(t) - 65] = t; return { perm, seq: seqs.get(k) }; });
+})();
+// Canonical form: rotate until the yellow-orange-blue corner sits at DLB with yellow down.
+const DLB = [slotIndex([-1, -1, -1], [0, -1, 0]), slotIndex([-1, -1, -1], [-1, 0, 0]), slotIndex([-1, -1, -1], [0, 0, -1])];
+function canonical(key) {
+  for (const o of ORIENTS) {
+    const k = applyMove(key, o);
+    if (k[DLB[0]] === '1' && k[DLB[1]] === '3' && k[DLB[2]] === '5') return { key: k, seq: o.seq };
+  }
+  return { key, seq: [] };
+}
+// Net: each face seen from outside, U above F, D below F, then L F R B across. [right, up] per face.
+const NET_DIRS = [[[1, 0, 0], [0, 0, -1]], [[1, 0, 0], [0, 0, 1]], [[0, 0, -1], [0, 1, 0]], [[0, 0, 1], [0, 1, 0]], [[1, 0, 0], [0, 1, 0]], [[-1, 0, 0], [0, 1, 0]]];
+const NET_SLOTS = [0, 1, 2, 3, 4, 5].map(f => {
+  const n = [0, 0, 0]; n[FACE_AXIS[f]] = FACE_SIGN[f];
+  const rt = NET_DIRS[f][0], up = NET_DIRS[f][1], out = [];
+  for (const r of [0, 1]) for (const c of [0, 1]) {
+    const pp = [0, 1, 2].map(i => n[i] + rt[i] * (c ? 1 : -1) + up[i] * (r ? -1 : 1));
+    out.push(slotIndex(pp, n));
+  }
+  return out;
+});
+// ---------- compact numbering of every state ----------
+// A canonical state is fixed by where the 7 movable corners are (7! = 5040 ways) and how 6 of them are
+// twisted (3^6 = 729; the 7th twist follows). code = permutation rank * 729 + twist number, 0 .. 3,674,159.
+ALL_MOVES.forEach((m, i) => { m.idx = i; });
+const NPERM = 5040, NORI = 729, NSTATE = NPERM * NORI;
+const C_POS = [];
+for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) if (!(x < 0 && y < 0 && z < 0)) C_POS.push([x, y, z]);
+// the three stickers of each corner in one consistent turning order, starting with its U/D sticker
+const C_SLOTS = C_POS.map(p => {
+  const ny = [0, p[1], 0], nx = [p[0], 0, 0], nz = [0, 0, p[2]];
+  const order = -p[0] * p[1] * p[2] > 0 ? [ny, nx, nz] : [ny, nz, nx];
+  return order.map(n => slotIndex(p, n));
+});
+const C_COLS = C_SLOTS.map(sl => sl.map(s => SOLVED[s]));
+const C_PIECE = {}; C_COLS.forEach((c, i) => { C_PIECE[c.slice().sort().join('')] = i; });
+function encodeKey(key) {
+  const perm = [], ori = [];
+  for (let i = 0; i < 7; i++) {
+    const cs = C_SLOTS[i].map(s => key[s]);
+    perm.push(C_PIECE[cs.slice().sort().join('')]);
+    ori.push(cs[0] === '0' || cs[0] === '1' ? 0 : cs[1] === '0' || cs[1] === '1' ? 1 : 2);
+  }
+  let r = 0;
+  for (let i = 0; i < 7; i++) { let c = 0; for (let j = i + 1; j < 7; j++) if (perm[j] < perm[i]) c++; r = r * (7 - i) + c; }
+  let o = 0; for (let i = 5; i >= 0; i--) o = o * 3 + ori[i];
+  return r * NORI + o;
+}
+function decodeCode(code) {
+  let r = Math.floor(code / NORI), o = code % NORI;
+  const dg = new Array(7);
+  for (let i = 6; i >= 0; i--) { dg[i] = r % (7 - i); r = Math.floor(r / (7 - i)); }
+  const avail = [0, 1, 2, 3, 4, 5, 6], perm = dg.map(d => avail.splice(d, 1)[0]);
+  const ori = []; let sum = 0;
+  for (let i = 0; i < 6; i++) { ori.push(o % 3); sum += o % 3; o = Math.floor(o / 3); }
+  ori.push((3 - sum % 3) % 3);
+  const arr = SOLVED.split('');
+  for (let i = 0; i < 7; i++) for (let j = 0; j < 3; j++) arr[C_SLOTS[i][(ori[i] + j) % 3]] = C_COLS[perm[i]][j];
+  return arr.join('');
+}
+// move tables: permutation and twist change independently of each other
+let PT = null, OT = null;
+function ensureTables() {
+  if (PT) return;
+  PT = new Uint16Array(9 * NPERM); OT = new Uint16Array(9 * NORI);
+  for (let m = 0; m < 9; m++) {
+    for (let p = 0; p < NPERM; p++) PT[m * NPERM + p] = Math.floor(encodeKey(applyMove(decodeCode(p * NORI), ALL_MOVES[m])) / NORI);
+    for (let o = 0; o < NORI; o++) OT[m * NORI + o] = encodeKey(applyMove(decodeCode(o), ALL_MOVES[m])) % NORI;
+  }
+}
+// fast sticker colours for a code, without strings (used to draw thousands of cubes at a time)
+let PERM_UN = null, ORI_UN = null; const SOLVED_N = Uint8Array.from(SOLVED, ch => ch.charCodeAt(0) - 48);
+const C_COLS_N = C_COLS.map(c => c.map(ch => ch.charCodeAt(0) - 48));
+function ensureUnrank() {
+  if (PERM_UN) return;
+  PERM_UN = new Uint8Array(NPERM * 7); ORI_UN = new Uint8Array(NORI * 7);
+  for (let r0 = 0; r0 < NPERM; r0++) {
+    let r = r0; const dg = new Array(7);
+    for (let i = 6; i >= 0; i--) { dg[i] = r % (7 - i); r = Math.floor(r / (7 - i)); }
+    const avail = [0, 1, 2, 3, 4, 5, 6]; for (let i = 0; i < 7; i++) PERM_UN[r0 * 7 + i] = avail.splice(dg[i], 1)[0];
+  }
+  for (let o0 = 0; o0 < NORI; o0++) {
+    let o = o0, sum = 0;
+    for (let i = 0; i < 6; i++) { ORI_UN[o0 * 7 + i] = o % 3; sum += o % 3; o = Math.floor(o / 3); }
+    ORI_UN[o0 * 7 + 6] = (3 - sum % 3) % 3;
+  }
+}
+function decodeStickersInto(code, out) {
+  ensureUnrank();
+  const p = (code / NORI) | 0, o = code - p * NORI;
+  out.set(SOLVED_N);
+  for (let i = 0; i < 7; i++) {
+    const cols = C_COLS_N[PERM_UN[p * 7 + i]], tw = ORI_UN[o * 7 + i], sl = C_SLOTS[i];
+    out[sl[tw % 3]] = cols[0]; out[sl[(tw + 1) % 3]] = cols[1]; out[sl[(tw + 2) % 3]] = cols[2];
+  }
+  return out;
+}
+function applyCode(c, m) { const p = (c / NORI) | 0; return PT[m * NPERM + p] * NORI + OT[m * NORI + c - p * NORI]; }
+
+const COLOR_LETTER = 'WYROGB';
+const STRING_ORDER = [0, 2, 4, 1, 3, 5]; // U R F D L B
+function faceletString(key) {
+  return STRING_ORDER.map(f => NET_SLOTS[f].map(sl => COLOR_LETTER[key.charCodeAt(sl) - 48]).join('')).join(':');
+}
+// Known layer sizes for the whole 2x2x2 group (fixed corner, U/R/F turns).
+const QTM_TOTALS = [1, 6, 27, 120, 534, 2256, 8969, 33058, 114149, 360508, 930588, 1350852, 782536, 90280, 276];
+const HTM_TOTALS = [1, 9, 54, 321, 1847, 9992, 50136, 227536, 870072, 1887748, 623800, 2644];
+/*MODEL-END*/
+
+// ---------- settings ----------
+const RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let halfTurns = false, view = 'all', labelAll = true;
+let renderDirty = true, cubeDirty = true, lastEventAt = 0;   // see 'drawing only when something changes'
+const activeMoves = () => halfTurns ? ALL_MOVES : ALL_MOVES.filter(m => m.turns !== 2);
+const maxDepth = () => halfTurns ? 11 : 14;     // every state: God's number is 11 half turns or 14 quarter turns
+const fullMax = () => halfTurns ? 5 : 7;        // layers drawn as cubes; outer layers are dots
+const totals = () => halfTurns ? HTM_TOTALS : QTM_TOTALS;
+
+const css = getComputedStyle(document.documentElement);
+const tok = (name) => css.getPropertyValue(name).trim();
+const STAGE = new THREE.Color(tok('--stage') || '#F6F4EF');
+const STICKER = ['--c-U', '--c-D', '--c-R', '--c-L', '--c-F', '--c-B'].map(t => new THREE.Color(tok(t)));
+const FACE_CSS = { 0: tok('--e-U'), 2: tok('--e-R'), 4: tok('--e-F') };
+const EDGE_COL = { 0: new THREE.Color(FACE_CSS[0]), 2: new THREE.Color(FACE_CSS[2]), 4: new THREE.Color(FACE_CSS[4]) };
+const ROUTE1 = new THREE.Color(tok('--route1')), ROUTE2 = new THREE.Color(tok('--route2'));
+const INK = new THREE.Color(tok('--stage-ink'));
+
+// deterministic RNG so the layout is the same on every visit
+let seed = 20261103;
+function rnd() { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+
+// ---------- graph data ----------
+const SIZES = [8.5, 6.5, 5.2, 4.4, 3.9, 3.6, 3.6, 3.6];
+// Sphere radii. Every layer gets a sphere big enough for its states: cube layers so that their cubes
+// sit about CUBE_SPACING apart, dot layers so that the most crowded patch keeps DOT_SPACING (the dot
+// radii here are estimates; each is set when its layer is arranged). Radii also grow steadily, so the
+// gaps between layers look alike from the centre outwards.
+const DOT_SPACING = 9, CUBE_SPACING = 11.25, SHELL_GAP = 70, SHELL_GROWTH = 1.12;
+const RADII = [0, 40];
+function computeRadii() {
+  const tot = totals(), F = fullMax(), M = maxDepth();
+  RADII.length = 0; RADII.push(0, 40);
+  for (let d = 2; d <= M; d++) {
+    const even = Math.sqrt(tot[d] / (4 * Math.PI));
+    RADII.push(d <= F ? Math.max(RADII[d - 1] + 50, RADII[d - 1] * 1.25, CUBE_SPACING * even)
+                      : Math.max(RADII[d - 1] * 1.25, DOT_SPACING * even * 1.3));
+  }
+}
+computeRadii();
+const CAP = 46000;
+let nodes = [], byKey = new Map(), edges = [], edgeSet = new Set(), depthShown = 0, popUntil = 0;
+let labelSet = [], labelDepth = 0;
+const LABEL_CAP = 240;
+
+// ---------- graph scene ----------
+const stage = document.getElementById('stage');
+const gCanvas = document.getElementById('graph');
+const gRenderer = new THREE.WebGLRenderer({ canvas: gCanvas, antialias: true });
+gRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+gRenderer.setClearColor(STAGE);
+const gScene = new THREE.Scene();
+const gCam = new THREE.PerspectiveCamera(45, 1, 1, 200000);
+gCam.position.set(60, 46, 96);
+const gControls = new THREE.OrbitControls(gCam, gCanvas);
+gControls.enableDamping = true; gControls.dampingFactor = 0.08;
+gControls.minDistance = 12; gControls.maxDistance = 90000;
+gControls.autoRotate = !RM; gControls.autoRotateSpeed = 0.55;
+
+const nodeVS = `
+attribute vec4 aStick;
+varying vec3 vPos; varying vec3 vN; varying vec4 vStick;
+void main() {
+  vPos = position; vN = normal; vStick = aStick;
+  vec4 p = vec4(position, 1.0);
+  #ifdef USE_INSTANCING
+    p = instanceMatrix * p;
+  #endif
+  gl_Position = projectionMatrix * modelViewMatrix * p;
+}`;
+const nodeFS = `
+uniform vec3 uPal[6]; uniform vec3 uBody;
+varying vec3 vPos; varying vec3 vN; varying vec4 vStick;
+vec3 pal(float c) {
+  if (c < 0.5) return uPal[0]; if (c < 1.5) return uPal[1]; if (c < 2.5) return uPal[2];
+  if (c < 3.5) return uPal[3]; if (c < 4.5) return uPal[4]; return uPal[5];
+}
+void main() {
+  vec3 an = abs(vN); float f; vec2 uv;
+  if (an.y > 0.5)      { f = vN.y > 0.0 ? 0.0 : 1.0; uv = vPos.xz; }
+  else if (an.x > 0.5) { f = vN.x > 0.0 ? 2.0 : 3.0; uv = vPos.yz; }
+  else                 { f = vN.z > 0.0 ? 4.0 : 5.0; uv = vPos.xy; }
+  float s = f * 4.0 + (uv.x > 0.0 ? 2.0 : 0.0) + (uv.y > 0.0 ? 1.0 : 0.0);
+  float comp = floor(s / 6.0 + 0.001); float idx = s - comp * 6.0;
+  float v = comp < 0.5 ? vStick.x : (comp < 1.5 ? vStick.y : (comp < 2.5 ? vStick.z : vStick.w));
+  v = floor(v + 0.5);
+  float d = exp2(3.0 * idx);
+  float c = mod(floor((v + 0.5) / d), 8.0);
+  vec2 q = abs(uv); float g = 0.045;
+  float edge = step(q.x, g) + step(q.y, g) + step(0.5 - g, q.x) + step(0.5 - g, q.y);
+  vec3 col = edge > 0.0 ? uBody : pal(c);
+  float sh = f < 0.5 ? 1.0 : (f < 1.5 ? 0.6 : (f < 2.5 ? 0.8 : (f < 3.5 ? 0.66 : (f < 4.5 ? 0.9 : 0.72))));
+  gl_FragColor = vec4(col * sh, 1.0);
+}`;
+const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+const stickArr = new Float32Array(CAP * 4);
+const stickAttr = new THREE.InstancedBufferAttribute(stickArr, 4);
+boxGeo.setAttribute('aStick', stickAttr);
+const nodeMat = new THREE.ShaderMaterial({
+  uniforms: { uPal: { value: STICKER }, uBody: { value: new THREE.Color(0x16181d) } },
+  vertexShader: nodeVS, fragmentShader: nodeFS
+});
+const nodeMesh = new THREE.InstancedMesh(boxGeo, nodeMat, CAP);
+nodeMesh.count = 0; nodeMesh.frustumCulled = false;
+nodeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+gScene.add(nodeMesh);
+const IM = nodeMesh.instanceMatrix.array;
+
+// two line sets: the BFS tree (first route found to each state) and the extra links
+function makeLines(cap, opacity) {
+  const pos = new Float32Array(cap * 6), col = new Float32Array(cap * 6);
+  const g = new THREE.BufferGeometry();
+  const pa = new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage);
+  const ca = new THREE.BufferAttribute(col, 3);
+  g.setAttribute('position', pa); g.setAttribute('color', ca); g.setDrawRange(0, 0);
+  const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity, depthWrite: false });
+  const l = new THREE.LineSegments(g, mat); l.frustumCulled = false; gScene.add(l);
+  return { pos, col, pa, ca, g, mat, l, list: [] };
+}
+const treeL = makeLines(CAP, 0.85);
+const crossL = makeLines(CAP * 4, 0.3);
+
+const boxEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
+const selMark = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({ color: ROUTE1 }));
+const hovMark = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.7 }));
+selMark.visible = hovMark.visible = false;
+gScene.add(selMark, hovMark);
+const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
+const tubeMats = [new THREE.MeshBasicMaterial({ color: ROUTE1 }), new THREE.MeshBasicMaterial({ color: ROUTE2 })];
+const tubes = [];
+for (let i = 0; i < 220; i++) { const t = new THREE.Mesh(tubeGeo, tubeMats[0]); t.visible = false; gScene.add(t); tubes.push(t); }
+
+function writeStickers(key, i) {
+  for (let c = 0; c < 4; c++) {
+    let v = 0, m = 1;
+    for (let k = 0; k < 6; k++) { v += (key.charCodeAt(c * 6 + k) - 48) * m; m *= 8; }
+    stickArr[i * 4 + c] = v;
+  }
+}
+
+function addNode(key, depth, parent, via, now) {
+  const i = nodes.length;
+  const sp = parent ? spawnPos(parent, depth) : [0, 0, 0], x = sp[0], y = sp[1], z = sp[2];
+  const n = { i, key, depth, parent, via, paths: parent ? parent.paths : 1, adj: [], x, y, z, vx: 0, vy: 0, vz: 0, fx: 0, fy: 0, fz: 0, born: now, size: SIZES[depth] || 2.6 };
+  nodes.push(n); byKey.set(key, n); (layerNodes[depth] || (layerNodes[depth] = [])).push(n); popUntil = Math.max(popUntil, now + 450);
+  writeStickers(key, i);
+  const o = i * 16;
+  IM.fill(0, o, o + 16); IM[o + 15] = 1;
+  return n;
+}
+// an edge stores the turn that leads from a to b, with a never farther from solved than b
+function addEdge(a, b, mv, tree) {
+  const k = a.i < b.i ? a.i + '|' + b.i : b.i + '|' + a.i;
+  if (edgeSet.has(k)) return false;
+  edgeSet.add(k);
+  const e = { a, b, mv, tree };
+  const L = tree ? treeL : crossL, j = L.list.length;
+  L.list.push(e);
+  const c = EDGE_COL[mv.face];
+  L.col.set([c.r, c.g, c.b, c.r, c.g, c.b], j * 6);
+  edges.push(e); a.adj.push(e); b.adj.push(e);
+  return true;
+}
+const otherEnd = (e, x) => e.a === x ? e.b : e.a;
+const moveAlong = (e, from) => e.a === from ? e.mv : inverseOf(e.mv);
+const edgeBetween = (x, y) => x.adj.find(e => otherEnd(e, x) === y);
+const edgeVisible = (e) => view === 'all' || (view === 'tree') === e.tree;
+
+let alpha = 1;
+function resetGraph() {
+  nodes = []; byKey = new Map(); edges = []; edgeSet = new Set(); depthShown = 0; seed = 20261103; popUntil = 0;
+  layerNodes = []; frozenBelow = 0;
+  treeL.list = []; crossL.list = [];
+  addNode(SOLVED, 0, null, null, performance.now());
+  nodeMesh.count = 1; stickAttr.needsUpdate = true;
+  syncLines();
+  alpha = 1; fitTo(0);
+}
+function syncLines() {
+  for (const L of [treeL, crossL]) { L.ca.needsUpdate = true; L.g.setDrawRange(0, L.list.length * 2); }
+}
+
+function expandLayer() {
+  if (depthShown >= fullMax()) return false;
+  const D = depthShown, now = performance.now(), mvs = activeMoves();
+  const frontier = layerNodes[D] || [];
+  const fresh = [];
+  for (const a of frontier) {
+    for (const mv of mvs) {
+      const k = applyMove(a.key, mv);
+      let b = byKey.get(k);
+      if (!b) {
+        b = addNode(k, D + 1, a, mv, now + rnd() * 450);
+        b.paths = 0; fresh.push(b);
+      }
+      if (b.depth === D + 1) { if (addEdge(a, b, mv, b.parent === a)) b.paths += a.paths; }
+      else if (b.depth === D) addEdge(a, b, mv, false);
+    }
+  }
+  // links between states of the new layer (only possible with half turns)
+  for (const a of fresh) for (const mv of mvs) {
+    const b = byKey.get(applyMove(a.key, mv));
+    if (b && b.depth === D + 1) addEdge(a, b, mv, false);
+  }
+  depthShown = D + 1;
+  nodeMesh.count = nodes.length; stickAttr.needsUpdate = true;
+  syncLines(); computeLabelSet();
+  const big = fresh.length > 3000;
+  frozenBelow = big ? D + 1 : Math.max(0, D);
+  alpha = big ? 0.4 : 1; fitTo(depthShown);
+  growing = false;
+  refreshUI();
+  return true;
+}
+
+// Turn labels on the cube layers' links: only for links that are long enough on screen to read,
+// longest first, so zoomed out the inner layers stay clean and labels appear as you zoom in.
+// a link label shows only when both of its cubes are big enough on screen to read (zoomed in on them),
+// and never on top of another label
+const LABEL_MIN_LINK_PX = 46, LABEL_MAX = 220, LABEL_MIN_CUBE_PX = 14, LABEL_BOX_W = 30, LABEL_BOX_H = 18;
+let edgeLabelList = [], elAt = 0, elDirty = true;
+const lastCamL = new Float32Array(16);
+function updateEdgeLabels(now) {
+  if (!labelAll) { edgeLabelList = []; return; }
+  const mw = gCam.matrixWorld.elements; let moved = elDirty || alpha > 0.004;
+  if (!moved) for (let i = 0; i < 16; i++) if (Math.abs(mw[i] - lastCamL[i]) > 1e-4) { moved = true; break; }
+  if (!moved || now - elAt < 150) return;
+  elAt = now; elDirty = false; lastCamL.set(mw);
+  const w = gCanvas.clientWidth, h = gCanvas.clientHeight; if (!w || !h) return;
+  pm.multiplyMatrices(gCam.projectionMatrix, gCam.matrixWorldInverse);
+  const e = pm.elements, out = [], focalL = h / 2 / Math.tan(gCam.fov * Math.PI / 360);
+  for (let j = 0; j < edges.length; j++) {
+    const ed = edges[j];
+    if (!edgeVisible(ed)) continue;
+    if (boxesShown() && selected && (ed.a === selected || ed.b === selected)) continue;
+    const A = ed.a, B = ed.b;
+    const wa = e[3] * A.x + e[7] * A.y + e[11] * A.z + e[15], wb = e[3] * B.x + e[7] * B.y + e[11] * B.z + e[15];
+    if (wa <= 0.5 || wb <= 0.5) continue;
+    const ax = (e[0] * A.x + e[4] * A.y + e[8] * A.z + e[12]) / wa, ay = (e[1] * A.x + e[5] * A.y + e[9] * A.z + e[13]) / wa;
+    const bx = (e[0] * B.x + e[4] * B.y + e[8] * B.z + e[12]) / wb, by = (e[1] * B.x + e[5] * B.y + e[9] * B.z + e[13]) / wb;
+    const mxn = (ax + bx) / 2, myn = (ay + by) / 2; if (mxn < -1 || mxn > 1 || myn < -1 || myn > 1) continue;
+    const len = Math.hypot((ax - bx) * w / 2, (ay - by) * h / 2); if (len < LABEL_MIN_LINK_PX) continue;
+    const pxA = A.size * focalL / wa, pxB = B.size * focalL / wb;
+    if (Math.min(pxA, pxB) < LABEL_MIN_CUBE_PX) continue;
+    out.push([len, ed, (mxn + 1) / 2 * w, (1 - myn) / 2 * h]);
+  }
+  out.sort((p, q) => q[0] - p[0]);
+  // greedy placement: skip any label whose box would overlap one already placed
+  const taken = new Set(), list = [];
+  for (const [, ed, sx, sy] of out) {
+    if (list.length >= LABEL_MAX) break;
+    const c0 = Math.floor((sx - LABEL_BOX_W / 2) / LABEL_BOX_W), c1 = Math.floor((sx + LABEL_BOX_W / 2) / LABEL_BOX_W);
+    const r0 = Math.floor((sy - LABEL_BOX_H / 2) / LABEL_BOX_H), r1 = Math.floor((sy + LABEL_BOX_H / 2) / LABEL_BOX_H);
+    let free = true;
+    for (let c = c0; c <= c1 && free; c++) for (let r = r0; r <= r1; r++) if (taken.has(c * 4096 + r)) { free = false; break; }
+    if (!free) continue;
+    for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) taken.add(c * 4096 + r);
+    list.push(ed);
+  }
+  edgeLabelList = list; renderDirty = true;
+}
+function computeLabelSet() {
+  labelSet = []; labelDepth = 0;
+  for (let L = 1; L <= depthShown; L++) {
+    const add = edges.filter(e => e.b.depth === L);
+    if (labelSet.length + add.length > LABEL_CAP) break;
+    labelSet.push(...add); labelDepth = L;
+  }
+}
+
+// ---------- routes, the shortest-route DAG and loops ----------
+function preds(n) {
+  const ps = n.adj.map(e => otherEnd(e, n)).filter(o => o.depth === n.depth - 1);
+  ps.sort((p, q) => p === n.parent ? -1 : q === n.parent ? 1 : p.i - q.i);
+  return ps;
+}
+function routes(n, limit) {
+  if (n.depth === 0) return [[n]];
+  const out = [];
+  for (const p of preds(n)) {
+    for (const r of routes(p, limit - out.length)) { out.push(r.concat([n])); if (out.length >= limit) return out; }
+  }
+  return out;
+}
+function routeMoves(r) { const m = []; for (let i = 1; i < r.length; i++) m.push(moveAlong(edgeBetween(r[i - 1], r[i]), r[i - 1])); return m; }
+function pathOf(node) { const out = []; while (node && node.parent) { out.push(node.via); node = node.parent; } return out.reverse(); }
+
+let loop = null, hl = [];
+let selOn = true;   // false after deselecting: the cube keeps its state, but nothing is highlighted
+// Boxed turn labels show only for a state the user clicked in the graph (and for the states reached by
+// clicking those boxes). Any other change of state hides them.
+let boxKey = null, keepBox = false, boxOn = false;
+// decided from the selection itself every time, so no box can outlive the state it belongs to
+const boxesShown = () => selOn && boxKey !== null && boxKey === curKey;
+function deselect() {
+  if (!selOn) return;
+  clearLoop(); selOn = false; elDirty = true; boxKey = null; boxOn = false; renderDirty = true;
+  computeHighlight(); renderRoutes();
+}
+function computeHighlight() {
+  hl = [];
+  if (!selOn) return;
+  if (loop) {
+    const { A, B, k } = loop;
+    for (let i = 1; i < k; i++) hl.push([A[i - 1], A[i], 0, 0.3]);
+    for (let i = k; i < A.length; i++) hl.push([A[i - 1], A[i], 0, 0.8]);
+    for (let i = k; i < B.length; i++) hl.push([B[i - 1], B[i], 1, 0.8]);
+    return;
+  }
+  if (selDot) {
+    let c = 0, a = nodes[0];
+    for (const m of selDot.route) {
+      c = applyCode(c, m.idx); const b = dotPoint(c); if (!b) break;
+      hl.push([a, b, 0, 0.55]); a = b;
+    }
+    return;
+  }
+  if (selFree) {
+    let c = 0, a = nodes[0];
+    for (const m of selFree.route) {
+      c = applyCode(c, m.idx);
+      const b = dots ? (posOfCode(c) || null) : byKey.get(decodeCode(c));
+      if (!b) break;
+      hl.push([a, b, 0, 0.55]); a = b;
+    }
+    return;
+  }
+  if (!selected) return;
+  const seen = new Set([selected]), stack = [selected];
+  while (stack.length && hl.length < tubes.length) {
+    const x = stack.pop();
+    for (const p of preds(x)) { hl.push([x, p, 0, 0.55]); if (!seen.has(p)) { seen.add(p); stack.push(p); } }
+  }
+}
+function clearLoop() { if (loop) { loop = null; computeHighlight(); renderRoutes(); } }
+
+/*LAYOUT-START*/
+// ---------- layout physics ----------
+// Each layer lives on its own sphere. Nodes repel only inside their own layer, over a range set by
+// that layer's spacing, so the work grows with the number of states rather than with their density.
+// Links act as springs. Inner layers that have settled are frozen while the newest layers settle.
+const KR = 0.12, DAMP = 0.6, LREST = 36, REP = 1.3;
+let layerNodes = [], frozenBelow = 0;
+function layerSpacing(d) {
+  const R = RADII[Math.min(d, RADII.length - 1)], c = Math.max(1, totals()[d] || 1);
+  return Math.sqrt(4 * Math.PI * R * R / c);
+}
+// new states start on their own sphere, close to the state they came from
+function spawnPos(parent, depth) {
+  const R = RADII[Math.min(depth, RADII.length - 1)];
+  let ux, uy, uz;
+  const pr = Math.hypot(parent.x, parent.y, parent.z);
+  if (pr < 1e-3) { const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u); ux = s * Math.cos(th); uy = u; uz = s * Math.sin(th); }
+  else {
+    const j = 2.4 * layerSpacing(depth) / R;
+    ux = parent.x / pr + (rnd() - 0.5) * j; uy = parent.y / pr + (rnd() - 0.5) * j; uz = parent.z / pr + (rnd() - 0.5) * j;
+  }
+  const l = Math.hypot(ux, uy, uz) || 1;
+  return [ux / l * R, uy / l * R, uz / l * R];
+}
+// flat spatial hash in typed arrays (a Map keyed by cell was the bottleneck)
+const HSIZE = 1 << 16, HMASK = HSIZE - 1;
+const hStart = new Int32Array(HSIZE + 1), hCur = new Int32Array(HSIZE);
+let hItems = new Int32Array(4096), hCell = new Int32Array(4096);
+const hashCell = (cx, cy, cz) => (Math.imul(cx, 73856093) ^ Math.imul(cy, 19349663) ^ Math.imul(cz, 83492791)) & HMASK;
+function tick(a) {
+  const d0 = Math.max(1, frozenBelow);
+  for (let d = d0; d <= depthShown; d++) for (const n of layerNodes[d] || []) { n.fx = n.fy = n.fz = 0; }
+  for (let d = d0; d <= depthShown; d++) {
+    const L = layerNodes[d] || [], N = L.length; if (N < 2) continue;
+    const cut = Math.min(60, Math.max(10, 2.2 * layerSpacing(d))), cut2 = cut * cut, inv = 1 / cut;
+    if (hItems.length < N) { hItems = new Int32Array(N * 2); hCell = new Int32Array(N * 2); }
+    hStart.fill(0);
+    for (let k = 0; k < N; k++) {
+      const n = L[k];
+      n.cx = Math.floor(n.x * inv); n.cy = Math.floor(n.y * inv); n.cz = Math.floor(n.z * inv);
+      const c = hashCell(n.cx, n.cy, n.cz); hCell[k] = c; hStart[c + 1]++;
+    }
+    for (let c = 0; c < HSIZE; c++) hStart[c + 1] += hStart[c];
+    hCur.set(hStart.subarray(0, HSIZE));
+    for (let k = 0; k < N; k++) hItems[hCur[hCell[k]]++] = k;
+    for (let k = 0; k < N; k++) {
+      const n = L[k], cx = n.cx, cy = n.cy, cz = n.cz;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+        const X = cx + dx, Y = cy + dy, Z = cz + dz, c = hashCell(X, Y, Z);
+        for (let t = hStart[c], te = hStart[c + 1]; t < te; t++) {
+          const j = hItems[t]; if (j <= k) continue;
+          const m = L[j]; if (m.cx !== X || m.cy !== Y || m.cz !== Z) continue;
+          let ex = n.x - m.x, ey = n.y - m.y, ez = n.z - m.z, d2 = ex * ex + ey * ey + ez * ez;
+          if (d2 >= cut2) continue;
+          if (d2 < 1e-4) { ex = rnd() - 0.5; ey = rnd() - 0.5; ez = rnd() - 0.5; d2 = 0.1; }
+          const dd = Math.sqrt(d2), f = REP * (1 - dd * inv) / dd;
+          n.fx += ex * f; n.fy += ey * f; n.fz += ez * f; m.fx -= ex * f; m.fy -= ey * f; m.fz -= ez * f;
+        }
+      }
+    }
+  }
+  for (let j = 0; j < edges.length; j++) {
+    const e = edges[j], A = e.a, B = e.b;
+    if (B.depth < d0) continue;
+    const ex = B.x - A.x, ey = B.y - A.y, ez = B.z - A.z, d = Math.sqrt(ex * ex + ey * ey + ez * ez) || 1e-3;
+    const rest = Math.max(LREST, RADII[B.depth] - RADII[A.depth]);
+    const f = (e.tree ? 0.04 : 0.012) * (d - rest) / d;
+    A.fx += ex * f; A.fy += ey * f; A.fz += ez * f; B.fx -= ex * f; B.fy -= ey * f; B.fz -= ez * f;
+  }
+  for (let d = d0; d <= depthShown; d++) for (const n of layerNodes[d] || []) {
+    const r = Math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z) || 1e-3;
+    const fr = KR * (RADII[n.depth] - r) / r;
+    n.fx += n.x * fr; n.fy += n.y * fr; n.fz += n.z * fr;
+    n.vx = (n.vx + n.fx * a) * DAMP; n.vy = (n.vy + n.fy * a) * DAMP; n.vz = (n.vz + n.fz * a) * DAMP;
+    const sp = Math.hypot(n.vx, n.vy, n.vz); if (sp > 9) { const s = 9 / sp; n.vx *= s; n.vy *= s; n.vz *= s; }
+    n.x += n.vx; n.y += n.vy; n.z += n.vz;
+  }
+}
+/*LAYOUT-END*/
+
+function writeGeometry(now) {
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i]; let s = n.size;
+    const t = (now - n.born) / 420;
+    if (t < 1) s *= t <= 0 ? 0.001 : 1 - Math.pow(1 - t, 3);
+    const o = i * 16; IM[o] = s; IM[o + 5] = s; IM[o + 10] = s; IM[o + 12] = n.x; IM[o + 13] = n.y; IM[o + 14] = n.z;
+  }
+  nodeMesh.instanceMatrix.updateRange.offset = 0; nodeMesh.instanceMatrix.updateRange.count = nodes.length * 16;
+  nodeMesh.instanceMatrix.needsUpdate = true;
+  for (const L of [treeL, crossL]) {
+    const P = L.pos, list = L.list;
+    for (let j = 0; j < list.length; j++) {
+      const e = list[j], o = j * 6;
+      P[o] = e.a.x; P[o + 1] = e.a.y; P[o + 2] = e.a.z; P[o + 3] = e.b.x; P[o + 4] = e.b.y; P[o + 5] = e.b.z;
+    }
+    L.pa.updateRange.offset = 0; L.pa.updateRange.count = Math.max(6, list.length * 6);
+    L.pa.needsUpdate = true;
+  }
+}
+
+// camera fit after growth
+let fitDist = null;
+function fitTo(depth) { fitDist = (RADII[Math.min(depth, RADII.length - 1)] + 26) * 2.55 + 40; }
+gControls.addEventListener('start', () => { fitDist = null; flight = null; gControls.autoRotate = false; });
+// ---------- design-app navigation ----------
+// Pan: Cmd/Ctrl/Shift + drag (built into OrbitControls), right-drag, or hold Space and drag.
+// Zoom: the wheel zooms toward whatever is under the pointer, not toward the centre.
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+document.getElementById('panKey').textContent = IS_MAC ? '⌘' : 'Ctrl';
+gControls.enableZoom = false;
+let spaceDown = false, overStage = false;
+function setPanCursor(on) { gCanvas.classList.toggle('pan', on); }
+function panMode(on) { spaceDown = on; gControls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE; setPanCursor(on); }
+gCanvas.addEventListener('pointerenter', () => { overStage = true; });
+gCanvas.addEventListener('pointerleave', () => { overStage = false; });
+window.addEventListener('keydown', (e) => {
+  const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable);
+  if (typing) return;
+  if (e.code === 'Space' && overStage) { e.preventDefault(); if (!spaceDown) panMode(true); }
+  else if (e.key === 'Meta' || e.key === 'Control' || e.key === 'Shift') setPanCursor(true);
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'))) deselect();
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' && spaceDown) panMode(false);
+  else if ((e.key === 'Meta' || e.key === 'Control' || e.key === 'Shift') && !spaceDown) setPanCursor(false);
+});
+window.addEventListener('blur', () => { if (spaceDown) panMode(false); setPanCursor(false); });
+const wheelRay = new THREE.Vector3(), wheelP = new THREE.Vector3(), viewN = new THREE.Vector3();
+gCanvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  fitDist = null; flight = null; gControls.autoRotate = false;
+  const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+  const k = Math.exp(Math.max(-60, Math.min(60, dy)) * (e.ctrlKey ? 0.012 : 0.0018));   // ctrl + wheel is a trackpad pinch
+  const r = gCanvas.getBoundingClientRect(), w = r.width, h = r.height;
+  const px = e.clientX - r.left, py = e.clientY - r.top;
+  // the point to zoom toward: the cube or dot under the pointer, else where the pointer ray meets
+  // the plane through the orbit centre
+  if (hover && Math.hypot(px - mx, py - my) < 4) wheelP.set(hover.x, hover.y, hover.z);
+  else {
+    wheelRay.set(px / w * 2 - 1, -(py / h) * 2 + 1, 0.5).unproject(gCam).sub(gCam.position).normalize();
+    viewN.copy(gControls.target).sub(gCam.position);
+    const depth = viewN.length(); viewN.normalize();
+    const t = depth / Math.max(0.05, wheelRay.dot(viewN));
+    wheelP.copy(gCam.position).addScaledVector(wheelRay, t);
+  }
+  const dist = gCam.position.distanceTo(gControls.target);
+  const nd = Math.min(gControls.maxDistance, Math.max(gControls.minDistance, dist * k)), kk = nd / dist;
+  gCam.position.sub(wheelP).multiplyScalar(kk).add(wheelP);
+  gControls.target.sub(wheelP).multiplyScalar(kk).add(wheelP);
+  gControls.update();
+}, { passive: false });
+
+// ---------- live cube ----------
+const cubebox = document.getElementById('cubebox');
+const cCanvas = document.getElementById('cube');
+const cRenderer = new THREE.WebGLRenderer({ canvas: cCanvas, antialias: true });
+cRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+cRenderer.setClearColor(STAGE);
+const cScene = new THREE.Scene();
+const cCam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+cCam.position.set(3.3, 2.75, 4.1);
+const cControls = new THREE.OrbitControls(cCam, cCanvas);
+cControls.enablePan = false; cControls.enableZoom = false; cControls.enableDamping = true; cControls.rotateSpeed = 0.7;
+cScene.add(new THREE.AmbientLight(0xffffff, 0.62));
+const dl = new THREE.DirectionalLight(0xffffff, 0.55); dl.position.set(3, 6, 4); cScene.add(dl);
+const dl2 = new THREE.DirectionalLight(0xffffff, 0.18); dl2.position.set(-4, -2, -3); cScene.add(dl2);
+const cubeRoot = new THREE.Group(); cScene.add(cubeRoot);
+
+function roundedSquare(w, r) {
+  const h = w / 2, s = new THREE.Shape();
+  s.moveTo(-h + r, -h); s.lineTo(h - r, -h); s.quadraticCurveTo(h, -h, h, -h + r);
+  s.lineTo(h, h - r); s.quadraticCurveTo(h, h, h - r, h); s.lineTo(-h + r, h);
+  s.quadraticCurveTo(-h, h, -h, h - r); s.lineTo(-h, -h + r); s.quadraticCurveTo(-h, -h, -h + r, -h);
+  return new THREE.ShapeGeometry(s, 5);
+}
+const stickerGeo = roundedSquare(0.84, 0.1);
+const bodyGeo = new THREE.BoxGeometry(0.97, 0.97, 0.97);
+const bodyMat = new THREE.MeshLambertMaterial({ color: 0x15171c });
+const stickerMats = SLOTS.map(() => new THREE.MeshLambertMaterial({ color: 0xffffff }));
+const cubies = [];
+for (const px of [-1, 1]) for (const py of [-1, 1]) for (const pz of [-1, 1]) {
+  const p = [px, py, pz], g = new THREE.Group();
+  g.position.set(px * 0.5, py * 0.5, pz * 0.5);
+  g.add(new THREE.Mesh(bodyGeo, bodyMat));
+  SLOTS.forEach((sl, s) => {
+    if (sl.p[0] !== px || sl.p[1] !== py || sl.p[2] !== pz) return;
+    const m = new THREE.Mesh(stickerGeo, stickerMats[s]);
+    const n = new THREE.Vector3(sl.n[0], sl.n[1], sl.n[2]);
+    m.position.copy(n).multiplyScalar(0.487);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+    g.add(m);
+  });
+  cubeRoot.add(g); cubies.push({ p, g });
+}
+let curKey = SOLVED;
+function paintCube(key) { for (let s = 0; s < 24; s++) stickerMats[s].color.copy(STICKER[key.charCodeAt(s) - 48]); cubeDirty = true; }
+paintCube(curKey);
+
+// animation queue: {mv, dur} | {set: key} | {wait: ms}
+const queue = []; let anim = null;
+const cbMove = document.getElementById('cbMove');
+const AX = ['x', 'y', 'z'];
+function startNext(now) {
+  while (!anim && queue.length) {
+    const job = queue.shift();
+    if (job.set) { curKey = job.set; paintCube(curKey); selOn = true; onState(); continue; }
+    if (job.wait) { anim = { wait: true, t0: now, dur: job.wait }; break; }
+    const pivot = new THREE.Group(); cubeRoot.add(pivot);
+    const sel = job.mv.sel == null ? 1 : job.mv.sel;
+    const layer = cubies.filter(c => sel === 0 || c.p[job.mv.ax] === sel);
+    layer.forEach(c => pivot.add(c.g));
+    anim = { job, pivot, layer, t0: now, dur: RM ? 60 : job.dur };
+    cbMove.textContent = job.mv.name; cbMove.classList.add('on');
+  }
+}
+function stepCube(now) {
+  if (!anim) startNext(now);
+  if (!anim) return;
+  const t = Math.min(1, (now - anim.t0) / anim.dur);
+  if (anim.wait) { if (t >= 1) { anim = null; startNext(now); } return; }
+  const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const { job, pivot, layer } = anim;
+  pivot.rotation.set(0, 0, 0);
+  pivot.rotation[AX[job.mv.ax]] = -Math.PI / 2 * (job.mv.q != null ? job.mv.q : job.mv.turns) * e;
+  if (t >= 1) {
+    layer.forEach(c => { cubeRoot.add(c.g); c.g.position.set(c.p[0] * 0.5, c.p[1] * 0.5, c.p[2] * 0.5); c.g.rotation.set(0, 0, 0); });
+    cubeRoot.remove(pivot);
+    curKey = applyMove(curKey, job.mv); paintCube(curKey);
+    anim = null;
+    if (!queue.length) cbMove.classList.remove('on');
+    selOn = true; onState();
+    startNext(now);
+  }
+}
+const busy = () => !!anim || queue.length > 0;
+function queueMove(mv) { if (queue.length >= 3) return; clearLoop(); queue.push({ mv, dur: mv.kind === 'rot' ? 380 : 300 }); }
+// moves in the graph are meant for the canonical orientation: rotate there first
+function pushReorient() { const c = canonical(curKey); c.seq.forEach(m => queue.push({ mv: m, dur: 380 })); return c.key; }
+function queueGraphMove(mv) { if (busy()) return; clearLoop(); pushReorient(); queue.push({ mv, dur: 300 }); }
+function normalize() { if (busy()) return; clearLoop(); pushReorient(); }
+
+function travelTo(target) {
+  if (busy()) return;
+  const ck = canonical(curKey).key;
+  if (target.key === ck) { normalize(); return; }
+  clearLoop();
+  const cur = byKey.get(ck);
+  if (cur) pushReorient();
+  const direct = activeMoves().find(m => applyMove(ck, m) === target.key);
+  if (direct) { queue.push({ mv: direct, dur: 320 }); return; }
+  const steps = [];
+  if (cur) {
+    const anc = new Set(); for (let n = cur; n; n = n.parent) anc.add(n);
+    let lca = target; const down = [];
+    while (!anc.has(lca)) { down.push(lca.via); lca = lca.parent; }
+    for (let n = cur; n !== lca; n = n.parent) steps.push(inverseOf(n.via));
+    down.reverse().forEach(m => steps.push(m));
+  } else {
+    queue.push({ set: SOLVED }, { wait: 220 });
+    pathOf(target).forEach(m => steps.push(m));
+  }
+  const dur = steps.length > 5 ? 200 : 280;
+  steps.forEach(m => queue.push({ mv: m, dur }));
+}
+// Solve: play a shortest route back to solved (from any state), turn by turn.
+// Walk timing. With the camera following, each step is: turn the cube, then fly to the new state,
+// then the next turn. The speed slider scales both.
+const SPEEDS = [null, { f: 2, name: 'Very slow' }, { f: 1.45, name: 'Slow' }, { f: 1, name: 'Normal' }, { f: 0.6, name: 'Fast' }, { f: 0.32, name: 'Very fast' }];
+function speedF() { const v = +$('optSpeed').value; return (SPEEDS[v] || SPEEDS[3]).f; }
+function walkTurn() { return ($('optFollow').checked ? 900 : 450) * speedF(); }
+function walkFly() { return 1200 * speedF(); }
+function moveDur() { return walkTurn(); }
+// queue a walk: one turn per step, and when the camera follows, a pause for its flight after each turn
+function pushWalk(moves) {
+  const follow = $('optFollow').checked;
+  moves.forEach(m => { queue.push({ mv: m, dur: walkTurn() }); if (follow) queue.push({ wait: walkFly() }); });
+}
+function goHome() {
+  if (busy() || curKey === SOLVED) return;
+  clearLoop();
+  const ck = canonical(curKey).key, cur = byKey.get(ck);
+  if (cur) {
+    pushReorient();
+    const mv = []; for (let n = cur; n.parent; n = n.parent) mv.push(inverseOf(n.via));
+    pushWalk(mv);
+    return;
+  }
+  ensureTables();
+  const code = encodeKey(ck);
+  routeFromSolved(code, route => {
+    if (busy()) return;
+    pushReorient();
+    pushWalk(route.slice().reverse().map(m => inverseOf(m)));
+  });
+}
+// Walk a loop: from the current state go back along route 2 to where it splits from route 1,
+// then out along route 1. The cube ends exactly where it started.
+function walkLoop() {
+  if (busy() || !selected) return;
+  const rs = routes(selected, 2); if (rs.length < 2) return;
+  const A = rs[0], B = rs[1];
+  let k = 0; while (A[k] === B[k]) k++;
+  loop = { A, B, k, n: selected, len: 2 * (A.length - k) };
+  pushReorient();
+  const back = []; for (let i = B.length - 1; i >= k; i--) back.push(moveAlong(edgeBetween(B[i], B[i - 1]), B[i]));
+  pushWalk(back);
+  queue.push({ wait: 380 });
+  const out = []; for (let i = k; i < A.length; i++) out.push(moveAlong(edgeBetween(A[i - 1], A[i]), A[i - 1]));
+  pushWalk(out);
+  computeHighlight(); renderRoutes();
+}
+
+// ---------- outer layers: every state as a dot ----------
+// Each state is a number (see encodeKey). One byte per state holds its distance from solved. A dot layer
+// is built in three steps: find its states, arrange them evenly on the layer's sphere (each state near
+// the state it was reached from, as far as even spacing allows), then reveal them.
+let dots = null, job = null;
+const DOT_TEX = (function () {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.beginPath(); g.arc(16, 16, 14, 0, Math.PI * 2); g.fill();
+  const t = new THREE.CanvasTexture(c); return t;
+})();
+const DOT_A = new THREE.Color(tok('--route2')), DOT_B = new THREE.Color(tok('--route1'));
+function layerColor(d) { const t = Math.min(1, Math.max(0, (d - fullMax() - 1) / Math.max(1, maxDepth() - fullMax() - 1))); return DOT_A.clone().lerpHSL(DOT_B, t); }
+// dots keep a fixed size on screen; the large layers form a dense shell, the last layers stay visible
+function dotPx(d) { const n = totals()[d]; return n > 500000 ? 1.6 : n > 100000 ? 2 : n > 10000 ? 2.6 : n > 1000 ? 3.6 : 6; }
+function initDots() {
+  ensureTables();
+  const tot = totals(), F = fullMax(), M = maxDepth();
+  let cap = 0; for (let d = F + 1; d <= M; d++) cap += tot[d];
+  dots = { dist: new Uint8Array(NSTATE).fill(255), map: new Int32Array(NSTATE).fill(-1),
+           codes: new Int32Array(cap), parent: new Int32Array(cap), pos: new Float32Array(cap * 3), off: [], cnt: [], layers: [], edges: 0, same: 0,
+           pin: new Uint8Array(cap), col: new Uint8Array(cap * 3), patch: new Uint16Array(cap), hist: [], bundles: [] };
+  for (const n of nodes) { const c = encodeKey(n.key); n.code = c; dots.dist[c] = n.depth; dots.map[c] = -2 - n.i; }
+  let o = 0; for (let d = F + 1; d <= M; d++) { dots.off[d] = o; dots.cnt[d] = 0; o += tot[d]; }
+  dots.layerOf = new Uint8Array(cap); for (let d = F + 1; d <= M; d++) dots.layerOf.fill(d, dots.off[d], dots.off[d] + tot[d]);
+  dots.mark = new Uint8Array(cap);
+  dots.index = [];
+}
+// ---- placement: patches on a cube map ----
+// Directions are mapped to the six faces of a cube (u, v in -1..1). Each face is cut into C x C patches.
+// The states that want a patch are laid out on a small grid inside it, ordered by where they want to
+// be, so no state moves farther than one patch. The sphere is made just large enough that the most
+// crowded patch still keeps its states DOT_SPACING apart.
+const FUV = new Float64Array(3), FDIR = new Float64Array(3);
+function faceUV(x, y, z) {
+  const ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z);
+  if (ax >= ay && ax >= az) { FUV[0] = x > 0 ? 0 : 1; FUV[1] = y / ax; FUV[2] = z / ax; }
+  else if (ay >= az) { FUV[0] = y > 0 ? 2 : 3; FUV[1] = x / ay; FUV[2] = z / ay; }
+  else { FUV[0] = z > 0 ? 4 : 5; FUV[1] = x / (az || 1); FUV[2] = y / (az || 1); }
+}
+function faceDir(f, u, v) {
+  const sg = f % 2 === 0 ? 1 : -1;
+  let x, y, z;
+  if (f < 2) { x = sg; y = u; z = v; } else if (f < 4) { y = sg; x = u; z = v; } else { z = sg; x = u; y = v; }
+  const l = Math.sqrt(x * x + y * y + z * z); FDIR[0] = x / l; FDIR[1] = y / l; FDIR[2] = z / l;
+}
+const RELAX_D = 7.2, RELAX_CS = 2 * RELAX_D, RELAX_ROUNDS = 4, RHS = 1 << 20;
+const relaxStart = new Int32Array(RHS + 1), relaxCur = new Int32Array(RHS);
+let relaxCell = new Int32Array(0), relaxItems = new Int32Array(0);
+const rHash = (x, y, z) => (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(z, 83492791)) & (RHS - 1);
+const EVEN_LAYERS = 'first', EVEN_BANDS = 96, Q = 1048576, IDX = 2097152;
+function evenOut(want, N) {
+  const z = new Float64Array(N), ang = new Float64Array(N), key = new Float64Array(N);
+  for (let j = 0; j < N; j++) {
+    const x = want[j * 3], y = want[j * 3 + 1], w = want[j * 3 + 2], l = Math.hypot(x, y, w) || 1;
+    z[j] = w / l; ang[j] = Math.atan2(y, x);
+    key[j] = Math.floor((z[j] + 1) / 2 * (Q - 1)) * IDX + j;
+  }
+  key.sort();
+  const zr = new Float64Array(N), band = new Int32Array(N), per = N / EVEN_BANDS;
+  for (let r = 0; r < N; r++) { const j = key[r] % IDX; zr[j] = 2 * (r + 0.5) / N - 1; band[j] = Math.min(EVEN_BANDS - 1, Math.floor(r / per)); }
+  for (let j = 0; j < N; j++) key[j] = band[j] * Q * IDX + Math.floor((ang[j] + Math.PI) / (2 * Math.PI) * (Q - 1)) * IDX + j;
+  key.sort();
+  let r = 0;
+  while (r < N) {
+    const b = Math.floor(key[r] / (Q * IDX)); let e = r;
+    while (e < N && Math.floor(key[e] / (Q * IDX)) === b) e++;
+    const n = e - r;
+    for (let q = r; q < e; q++) {
+      const j = key[q] % IDX, a = 2 * Math.PI * (q - r + 0.5) / n - Math.PI, zz = zr[j], rr = Math.sqrt(Math.max(0, 1 - zz * zz));
+      want[j * 3] = rr * Math.cos(a); want[j * 3 + 1] = rr * Math.sin(a); want[j * 3 + 2] = zz;
+    }
+    r = e;
+  }
+}
+function startDotLayer() {
+  if (!dots) initDots();
+  const d = depthShown, nd = d + 1, tot = totals()[nd];
+  const g = new THREE.BufferGeometry();
+  const attr = new THREE.BufferAttribute(dots.pos.subarray(dots.off[nd] * 3, (dots.off[nd] + tot) * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  g.setAttribute('position', attr); g.setDrawRange(0, 0);
+  const cattr = new THREE.BufferAttribute(dots.col.subarray(dots.off[nd] * 3, (dots.off[nd] + tot) * 3), 3, true);
+  g.setAttribute('color', cattr);
+  const mat = new THREE.PointsMaterial({ size: dotPx(nd), sizeAttenuation: false, vertexColors: true, map: DOT_TEX, transparent: true, alphaTest: 0.4, opacity: 0.85, depthWrite: false });
+  const pts = new THREE.Points(g, mat); pts.frustumCulled = false; gScene.add(pts);
+  dots.layers[nd] = { pts, g, attr, cattr, mat, uploaded: 0 };
+  const len = d <= fullMax() ? (layerNodes[d] || []).length : dots.cnt[d];
+  job = { d, nd, k: 0, len, phase: 'search', t0: performance.now(), lastUi: 0, want: new Float32Array(tot * 3), edges: 0, same: 0, shown: 0,
+          targetMs: 1000 * Math.min(6, Math.max(1.5, 0.9 * Math.log10(tot))) };
+  fitTo(nd);
+}
+function runJob(budget, now) {
+  const D = dots, d = job.d, nd = job.nd, mv = activeMoves().map(m => m.idx), nm = mv.length;
+  const off = D.off[nd], R = RADII[nd], jit = 1.2 * DOT_SPACING / R;
+  const dist = D.dist, codes = D.codes, pos = D.pos, map = D.map;
+  const t0 = performance.now();
+  if (job.phase === 'search') {
+    const fromNodes = d <= fullMax(), L = layerNodes[d], src = fromNodes ? 0 : D.off[d], want = job.want;
+    let k = job.k, cnt = D.cnt[nd], edges = 0, same = 0;
+    while (k < job.len) {
+      let c, px, py, pz;
+      if (fromNodes) { const n = L[k]; c = n.code; px = n.x; py = n.y; pz = n.z; }
+      else { const i = src + k; c = codes[i]; px = pos[i * 3]; py = pos[i * 3 + 1]; pz = pos[i * 3 + 2]; }
+      const pr = Math.sqrt(px * px + py * py + pz * pz) || 1;
+      const p = (c / NORI) | 0, o = c - p * NORI;
+      for (let t = 0; t < nm; t++) {
+        const m = mv[t], nc = PT[m * NPERM + p] * NORI + OT[m * NORI + o], dn = dist[nc];
+        if (dn === 255) {
+          dist[nc] = nd; const di = off + cnt; codes[di] = nc; map[nc] = di; D.parent[di] = c; D.pin[di] = 1;
+          want[cnt * 3] = px / pr + (rnd() - 0.5) * jit; want[cnt * 3 + 1] = py / pr + (rnd() - 0.5) * jit; want[cnt * 3 + 2] = pz / pr + (rnd() - 0.5) * jit;
+          cnt++; edges++;
+        } else if (dn === nd) { edges++; D.pin[map[nc]]++; }
+        else if (dn === d && !fromNodes) same++;
+      }
+      k++;
+      if ((k & 1023) === 0 && performance.now() - t0 > budget) break;
+    }
+    D.cnt[nd] = cnt; job.edges += edges; job.same += same; job.k = k;
+    if (k >= job.len) {
+      // the last layer has no layer beyond it, so count the links inside it here
+      if (nd === maxDepth() && halfTurns) { job.phase = 'count'; job.k = 0; job.len = cnt; }
+      else job.phase = 'even';
+    }
+    return;
+  }
+  if (job.phase === 'count') {
+    let k = job.k, same = 0;
+    while (k < job.len) {
+      const c = codes[off + k], p = (c / NORI) | 0, o = c - p * NORI;
+      for (let t = 0; t < nm; t++) { const m = mv[t]; if (dist[PT[m * NPERM + p] * NORI + OT[m * NORI + o]] === nd) same++; }
+      k++;
+      if ((k & 1023) === 0 && performance.now() - t0 > budget) break;
+    }
+    job.same += same; job.k = k;
+    if (k >= job.len) job.phase = 'even';
+    return;
+  }
+  const N = D.cnt[nd];
+  if (job.phase === 'even') {
+    // Even the layer out over the sphere, keeping order: first by height (rank of z, so each band of
+    // equal area holds the same number of states), then around each band (rank of angle). Neighbours
+    // stay neighbours; only the large-scale crowding goes away.
+    if (EVEN_LAYERS === 'all' || nd === fullMax() + 1) evenOut(job.want, N);
+    job.phase = 'cells';
+    return;
+  }
+  if (job.phase === 'cells') {
+    // which patch each state wants
+    const C = Math.max(8, Math.min(96, Math.round(Math.sqrt(N / 240)))), dl = 2 / C, NC = 6 * C * C;
+    const U = new Float32Array(N), V = new Float32Array(N), cellOf = new Int32Array(N), start = new Int32Array(NC + 1);
+    const want = job.want;
+    for (let j = 0; j < N; j++) {
+      faceUV(want[j * 3], want[j * 3 + 1], want[j * 3 + 2]);
+      const iu = Math.min(C - 1, Math.max(0, Math.floor((FUV[1] + 1) / dl))), iv = Math.min(C - 1, Math.max(0, Math.floor((FUV[2] + 1) / dl)));
+      const c = (FUV[0] * C + iu) * C + iv;
+      U[j] = FUV[1]; V[j] = FUV[2]; cellOf[j] = c; start[c + 1]++;
+    }
+    for (let c = 0; c < NC; c++) start[c + 1] += start[c];
+    const cur = start.slice(0, NC), items = new Int32Array(N);
+    for (let j = 0; j < N; j++) items[cur[cellOf[j]]++] = j;
+    // the sphere radius: the most crowded patch, at its most squeezed corner, still keeps DOT_SPACING
+    let minS = Infinity;
+    for (let c = 0; c < NC; c++) {
+      const n = start[c + 1] - start[c]; if (!n) continue;
+      const iu = Math.floor(c / C) % C, iv = c % C, k = Math.ceil(Math.sqrt(n));
+      const cu = Math.max(Math.abs(-1 + iu * dl), Math.abs(-1 + (iu + 1) * dl)), cv = Math.max(Math.abs(-1 + iv * dl), Math.abs(-1 + (iv + 1) * dl));
+      const scale = Math.min(Math.sqrt(1 + cu * cu), Math.sqrt(1 + cv * cv)) / (1 + cu * cu + cv * cv);
+      minS = Math.min(minS, dl / k * scale);
+    }
+    RADII[nd] = Math.max(RADII[nd - 1] * 1.25, DOT_SPACING / minS);
+    for (let d2 = nd + 1; d2 < RADII.length; d2++) RADII[d2] = Math.max(RADII[d2], RADII[d2 - 1] * 1.25);
+    fitTo(nd);
+    job.want = null;
+    job.pl = { C, dl, U, V, start, items, c: 0, NC };
+    job.act = new Int32Array(N); job.isAct = new Uint8Array(N); job.nAct = 0;
+    job.phase = 'place';
+    return;
+  }
+  if (job.phase === 'place') {
+    // lay out each patch: rows by v, then columns by u
+    const { C, dl, U, V, start, items, NC } = job.pl, R2 = RADII[nd];
+    let c = job.pl.c;
+    while (c < NC) {
+      const s0 = start[c], n = start[c + 1] - s0;
+      if (n) {
+        const f = Math.floor(c / (C * C)), iu = Math.floor(c / C) % C, iv = c % C, u0 = -1 + iu * dl, v0 = -1 + iv * dl;
+        const k = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / k);
+        // spacing of this patch's grid on the sphere, at its most squeezed corner
+        const cu = Math.max(Math.abs(u0), Math.abs(u0 + dl)), cv = Math.max(Math.abs(v0), Math.abs(v0 + dl));
+        const scale = Math.min(Math.sqrt(1 + cu * cu), Math.sqrt(1 + cv * cv)) / (1 + cu * cu + cv * cv);
+        const sv = R2 * dl / rows * scale;
+        const arr = Array.from(items.subarray(s0, s0 + n)).sort((a, b) => V[a] - V[b]);
+        for (let r = 0; r < rows; r++) {
+          const row = arr.slice(r * k, Math.min(n, r * k + k)).sort((a, b) => U[a] - U[b]), m = row.length;
+          const su = R2 * dl / m * scale, crowded = Math.min(su, sv) < 2.2 * RELAX_D;
+          // scatter within each grid spot: freely where the patch is crowded (relaxed below), elsewhere
+          // only as far as keeps neighbours RELAX_D apart, so no relaxing is needed there
+          const ju = crowded ? 0.45 : Math.min(0.45, 0.5 * (1 - RELAX_D / su)), jv = crowded ? 0.45 : Math.min(0.45, 0.5 * (1 - RELAX_D / sv));
+          const v = v0 + (r + 0.5) * dl / rows;
+          for (let q = 0; q < m; q++) {
+            faceDir(f, u0 + (q + 0.5 + (rnd() - 0.5) * 2 * ju) * dl / m, v + (rnd() - 0.5) * 2 * jv * dl / rows);
+            const i = (off + row[q]) * 3;
+            pos[i] = FDIR[0] * R2; pos[i + 1] = FDIR[1] * R2; pos[i + 2] = FDIR[2] * R2;
+            if (crowded) { job.act[job.nAct++] = row[q]; job.isAct[row[q]] = 1; }
+          }
+        }
+      }
+      c++;
+      if ((c & 255) === 0 && performance.now() - t0 > budget) break;
+    }
+    job.pl.c = c;
+    if (c >= NC) { job.pl = null; job.phase = 'relax'; job.it = 0; job.rk = -1; }
+    return;
+  }
+  if (job.phase === 'relax') {
+    // Organic spacing: like the cube layers' layout, close neighbours push each other apart.
+    // Each round: hash the layer into cells of RELAX_D, then move every pair closer than RELAX_D
+    // apart by half the gap each, then put the states back on the sphere.
+    const R2 = RADII[nd], base = off * 3;
+    if (job.rk < 0) {
+      if (relaxCell.length < N) { relaxCell = new Int32Array(N * 1.2 | 0); relaxItems = new Int32Array(N * 1.2 | 0); }
+      relaxStart.fill(0);
+      for (let j = 0; j < N; j++) {
+        const i = base + j * 3;
+        const h = rHash(Math.floor(pos[i] / RELAX_CS), Math.floor(pos[i + 1] / RELAX_CS), Math.floor(pos[i + 2] / RELAX_CS));
+        relaxCell[j] = h; relaxStart[h + 1]++;
+      }
+      for (let h = 0; h < RHS; h++) relaxStart[h + 1] += relaxStart[h];
+      relaxCur.set(relaxStart.subarray(0, RHS));
+      for (let j = 0; j < N; j++) relaxItems[relaxCur[relaxCell[j]]++] = j;
+      job.rk = 0;
+      return;
+    }
+    let a = job.rk;
+    const D2 = RELAX_D * RELAX_D, act = job.act, isAct = job.isAct, NA = job.nAct;
+    while (a < NA) {
+      const j = act[a], i = base + j * 3, x = pos[i], y = pos[i + 1], z = pos[i + 2];
+      // cells are twice RELAX_D wide, so any neighbour closer than RELAX_D is in one of 8 cells
+      const fx = x / RELAX_CS, fy = y / RELAX_CS, fz = z / RELAX_CS, X = Math.floor(fx), Y = Math.floor(fy), Z = Math.floor(fz);
+      const ox = fx - X < 0.5 ? -1 : 1, oy = fy - Y < 0.5 ? -1 : 1, oz = fz - Z < 0.5 ? -1 : 1;
+      for (let c8 = 0; c8 < 8; c8++) {
+        const h = rHash(X + (c8 & 1 ? ox : 0), Y + (c8 & 2 ? oy : 0), Z + (c8 & 4 ? oz : 0));
+        for (let t = relaxStart[h], te = relaxStart[h + 1]; t < te; t++) {
+          const q = relaxItems[t]; if (q === j || (isAct[q] && q < j)) continue;
+          const k3 = base + q * 3;
+          let ex = pos[i] - pos[k3], ey = pos[i + 1] - pos[k3 + 1], ez = pos[i + 2] - pos[k3 + 2];
+          const d2 = ex * ex + ey * ey + ez * ez;
+          if (d2 >= D2) continue;
+          let dd = Math.sqrt(d2);
+          if (dd < 1e-3) { ex = rnd() - 0.5; ey = rnd() - 0.5; ez = rnd() - 0.5; dd = Math.hypot(ex, ey, ez); }
+          const push = (RELAX_D - dd) * 0.5 / dd;
+          pos[i] += ex * push; pos[i + 1] += ey * push; pos[i + 2] += ez * push;
+          pos[k3] -= ex * push; pos[k3 + 1] -= ey * push; pos[k3 + 2] -= ez * push;
+        }
+      }
+      a++;
+      if ((a & 4095) === 0 && performance.now() - t0 > budget) break;
+    }
+    job.rk = a;
+    if (a >= NA) {
+      for (let b = 0; b < NA; b++) {
+        const i = base + act[b] * 3, l = R2 / (Math.hypot(pos[i], pos[i + 1], pos[i + 2]) || 1);
+        pos[i] *= l; pos[i + 1] *= l; pos[i + 2] *= l;
+      }
+      job.it++; job.rk = -1;
+      if (job.it >= RELAX_ROUNDS || NA === 0) { job.phase = 'reveal'; job.r0 = now; job.act = null; job.isAct = null; }
+    }
+    return;
+  }
+  if (job.phase === 'reveal') {
+    if (!job.colored) { paintLayer(nd); job.colored = true; }
+    job.paced = $('optPace').checked;
+    const f = job.paced ? Math.min(1, (now - job.r0) / job.targetMs) : 1;
+    const shown = Math.min(N, Math.ceil(N * f));
+    const Ly = D.layers[nd];
+    if (shown > Ly.uploaded) {
+      Ly.attr.updateRange.offset = Ly.uploaded * 3; Ly.attr.updateRange.count = (shown - Ly.uploaded) * 3;
+      Ly.attr.needsUpdate = true; Ly.g.setDrawRange(0, shown); Ly.uploaded = shown;
+    }
+    job.shown = shown;
+    if (shown >= N) job.done = true;
+  }
+}
+function jobProgress(now) {
+  const tot = totals()[job.nd], L = 'Layer ' + job.nd + ' · ';
+  if (job.phase === 'search' || job.phase === 'count') {
+    showBusy(L + 'finding states · ' + fmt(dots.cnt[job.nd]) + ' of ' + fmt(tot), 0.15 * dots.cnt[job.nd] / tot); return;
+  }
+  if (job.phase !== 'reveal') {
+    const f = job.phase === 'place' && job.pl ? 0.3 * job.pl.c / job.pl.NC : job.phase === 'relax' ? 0.3 + 0.7 * (job.it + Math.max(0, job.rk) / Math.max(1, job.nAct)) / RELAX_ROUNDS : 0;
+    showBusy(L + 'arranging ' + fmt(tot) + ' states on the sphere', 0.15 + 0.1 * f); return;
+  }
+  const f = job.shown / tot, el = now - job.r0, eta = f > 0.02 ? el * (1 - f) / f : null;
+  const left = eta == null ? 'estimating…' : eta < 1000 ? 'under a second left' : 'about ' + Math.ceil(eta / 1000) + ' s left';
+  showBusy(L + fmt(job.shown) + ' of ' + fmt(tot) + '<br>' + left, 0.25 + 0.75 * f);
+}
+function finishJob(now) {
+  const nd = job.nd;
+  dots.edges += job.edges; dots.same += job.same;
+  job = null;
+  buildLayerIndex(nd);
+  const h = new Array(10).fill(0), o = dots.off[nd];
+  for (let k = 0; k < dots.cnt[nd]; k++) h[Math.min(9, dots.pin[o + k])]++;
+  dots.hist[nd] = h;
+  buildBundles(nd);
+  depthShown = nd; growing = false; settledAt = now;
+  refreshUI();
+}
+// ---------- colour by routes in ----------
+// "Routes in" is how many neighbours a state has in the layer inside it, i.e. how many shortest routes
+// arrive at it in their last turn. 1 means it hangs off the tree by a single link; more means routes merge.
+const PIN_COLORS = ['#9AA3B5', '#9AA3B5', '#2E9BC6', '#3E63DD', '#7B4FD6', '#C23FA8', '#E0337E', '#E0337E', '#E0337E', '#E0337E'];
+const PIN_RGB = PIN_COLORS.map(h => { const c = new THREE.Color(h); return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)]; });
+let colorMode = 'routes';
+function paintLayer(d) {
+  if (!dots || !dots.layers[d]) return;
+  const o = dots.off[d], n = dots.cnt[d], C = dots.col, P = dots.pin;
+  if (colorMode === 'layer') {
+    const lc = layerColor(d), r = Math.round(lc.r * 255), g = Math.round(lc.g * 255), b = Math.round(lc.b * 255);
+    for (let k = 0; k < n; k++) { const i = (o + k) * 3; C[i] = r; C[i + 1] = g; C[i + 2] = b; }
+  } else {
+    for (let k = 0; k < n; k++) { const i = (o + k) * 3, c = PIN_RGB[Math.min(9, P[o + k])]; C[i] = c[0]; C[i + 1] = c[1]; C[i + 2] = c[2]; }
+  }
+  dots.layers[d].cattr.needsUpdate = true;
+}
+function repaintAll() { renderDirty = true; if (dots) for (let d = fullMax() + 1; d <= maxDepth(); d++) if (dots.layers[d]) paintLayer(d); renderRoutesIn(); }
+// routes-in counts for the cube layers come straight from their links
+function cubeHist(d) {
+  const h = new Array(10).fill(0);
+  for (const n of layerNodes[d] || []) { let k = 0; for (const e of n.adj) if (otherEnd(e, n).depth === d - 1) k++; h[Math.min(9, k)]++; }
+  return h;
+}
+function renderRoutesIn() {
+  const box = $('routesIn'); if (!box) return;
+  const rows = [];
+  for (let d = 2; d <= depthShown; d++) {
+    const h = d <= fullMax() ? cubeHist(d) : dots && dots.hist[d]; if (!h) continue;
+    const tot = h.reduce((a, b) => a + b, 0); if (!tot) continue;
+    let mean = 0; h.forEach((c, k) => { mean += c * k; });
+    const seg = h.map((c, k) => c && k ? '<i style="width:' + (100 * c / tot).toFixed(2) + '%;background:' + PIN_COLORS[k] + '" title="' + k + (k === 1 ? ' route: ' : ' routes: ') + fmt(c) + ' states"></i>' : '').join('');
+    rows.push('<div class="rin"><span>' + d + '</span><div class="rbar">' + seg + '</div><span class="rmean">' + (mean / tot).toFixed(2) + '</span></div>');
+  }
+  box.innerHTML = rows.length ? '<div class="rin hd"><span>Layer</span><span></span><span class="rmean">avg</span></div>' + rows.join('') : '<p class="note" style="margin:0">Grow two layers or more to see routes merge.</p>';
+}
+
+// ---------- bundled links between dot layers ----------
+// Zoomed out, the millions of links between dot layers are summed per pair of regions (each sphere cut
+// into 6 x 10 x 10 regions) and the busiest pairs are drawn as single lines, darker the more links they
+// carry. Tree links and extra links are bundled separately, so the view switch applies to them too.
+const BC = 10, BNP = 6 * BC * BC, BUNDLE_MAX = 2500;
+function bundlePatch(x, y, z) {
+  faceUV(x, y, z);
+  const iu = Math.min(BC - 1, Math.max(0, Math.floor((FUV[1] + 1) / 2 * BC))), iv = Math.min(BC - 1, Math.max(0, Math.floor((FUV[2] + 1) / 2 * BC)));
+  return (FUV[0] * BC + iu) * BC + iv;
+}
+function makeBundleLines(color) {
+  const cap = BUNDLE_MAX * 8;
+  const pos = new Float32Array(cap * 6), col = new Float32Array(cap * 6), g = new THREE.BufferGeometry();
+  const pa = new THREE.BufferAttribute(pos, 3), ca = new THREE.BufferAttribute(col, 3);
+  g.setAttribute('position', pa); g.setAttribute('color', ca); g.setDrawRange(0, 0);
+  const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }));
+  l.frustumCulled = false; gScene.add(l);
+  return { pos, col, pa, ca, g, l, n: 0, color: new THREE.Color(color) };
+}
+const bundleTree = makeBundleLines(tok('--stage-ink')), bundleExtra = makeBundleLines(tok('--route1'));
+function buildBundles(nd) {
+  const D = dots, d = nd - 1, o = D.off[nd], N = D.cnt[nd], P = D.pos, R1 = RADII[d], R2 = RADII[nd];
+  // regions of the new layer, and their centres
+  const cen2 = new Float64Array(BNP * 3);
+  for (let k = 0; k < N; k++) { const i = o + k, b = bundlePatch(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); D.patch[i] = b; cen2[b * 3] += P[i * 3]; cen2[b * 3 + 1] += P[i * 3 + 1]; cen2[b * 3 + 2] += P[i * 3 + 2]; }
+  // regions of the layer inside, and their centres
+  const cen1 = new Float64Array(BNP * 3), patchOf = (code) => {
+    const j = D.map[code];
+    if (j <= -2) { const n = nodes[-2 - j]; if (n.bp == null) n.bp = bundlePatch(n.x, n.y, n.z); return n.bp; }
+    return D.patch[j];
+  };
+  if (d <= fullMax()) for (const n of layerNodes[d] || []) { n.bp = bundlePatch(n.x, n.y, n.z); cen1[n.bp * 3] += n.x; cen1[n.bp * 3 + 1] += n.y; cen1[n.bp * 3 + 2] += n.z; }
+  else for (let k = 0, od = D.off[d]; k < D.cnt[d]; k++) { const i = od + k, b = D.patch[i]; cen1[b * 3] += P[i * 3]; cen1[b * 3 + 1] += P[i * 3 + 1]; cen1[b * 3 + 2] += P[i * 3 + 2]; }
+  // sum the links per pair of regions
+  const tree = new Int32Array(BNP * BNP), extra = new Int32Array(BNP * BNP), mv = activeMoves().map(m => m.idx);
+  for (let k = 0; k < N; k++) {
+    const i = o + k, c = D.codes[i], par = D.parent[i], b2 = D.patch[i], p = (c / NORI) | 0, oo = c - p * NORI;
+    for (const m of mv) {
+      const nc = PT[m * NPERM + p] * NORI + OT[m * NORI + oo];
+      if (D.dist[nc] !== d) continue;
+      const cell = patchOf(nc) * BNP + b2;
+      if (nc === par) tree[cell]++; else extra[cell]++;
+    }
+  }
+  const pick = (arr) => {
+    const out = [];
+    for (let c = 0; c < arr.length; c++) if (arr[c]) out.push(c);
+    out.sort((a, b) => arr[b] - arr[a]);
+    return out.slice(0, BUNDLE_MAX).map(c => [c, arr[c]]);
+  };
+  const add = (L, list) => {
+    if (!list.length) return;
+    const lmax = Math.log(list[0][1] + 1);
+    for (const [c, cnt] of list) {
+      if (L.n >= BUNDLE_MAX * 8) break;
+      const a = Math.floor(c / BNP), b = c % BNP, q = L.n * 6;
+      const la = Math.hypot(cen1[a * 3], cen1[a * 3 + 1], cen1[a * 3 + 2]) || 1, lb = Math.hypot(cen2[b * 3], cen2[b * 3 + 1], cen2[b * 3 + 2]) || 1;
+      L.pos[q] = cen1[a * 3] / la * R1; L.pos[q + 1] = cen1[a * 3 + 1] / la * R1; L.pos[q + 2] = cen1[a * 3 + 2] / la * R1;
+      L.pos[q + 3] = cen2[b * 3] / lb * R2; L.pos[q + 4] = cen2[b * 3 + 1] / lb * R2; L.pos[q + 5] = cen2[b * 3 + 2] / lb * R2;
+      const t = 0.12 + 0.7 * Math.log(cnt + 1) / lmax;
+      for (const v of [q, q + 3]) { L.col[v] = STAGE.r + (L.color.r - STAGE.r) * t; L.col[v + 1] = STAGE.g + (L.color.g - STAGE.g) * t; L.col[v + 2] = STAGE.b + (L.color.b - STAGE.b) * t; }
+      L.n++;
+    }
+    L.pa.needsUpdate = true; L.ca.needsUpdate = true; L.g.setDrawRange(0, L.n * 2);
+  };
+  add(bundleTree, pick(tree)); add(bundleExtra, pick(extra));
+  D.bundles[nd] = true;
+  applyView();
+}
+
+// ---------- zooming in: nearby dots are drawn as real cubes, with their links and turn labels ----------
+// Each finished dot layer gets a grid index. A dot becomes a cube when its cube would be at least
+// MIN_PX pixels on screen; the nearest DETAIL_CAP of those are drawn, the nearest EDGE_CUBES get their
+// links, and the nearest LABEL_CUBES that are big enough on screen get turn labels.
+const MIN_PX = 7, DETAIL_CAP = 20000, EDGE_CUBES = 2500, LABEL_CUBES = 40, LABEL_MIN_PX = 16;
+function cubeSizeOf(d) { return 0.4 * DOT_SPACING; }
+// each layer has its own grid sized to its sphere (radii are known only once a layer is arranged)
+function buildLayerIndex(d) {
+  const n = dots.cnt[d], o = dots.off[d], P = dots.pos;
+  const gn = 64, goff = RADII[d] + 50, cs = 2 * goff / gn, NC = gn * gn * gn;
+  const g = v => Math.min(gn - 1, Math.max(0, Math.floor((v + goff) / cs)));
+  const start = new Int32Array(NC + 1), items = new Int32Array(n), cell = new Int32Array(n);
+  for (let k = 0; k < n; k++) { const i = o + k, c = (g(P[i * 3]) * gn + g(P[i * 3 + 1])) * gn + g(P[i * 3 + 2]); cell[k] = c; start[c + 1]++; }
+  for (let c = 0; c < NC; c++) start[c + 1] += start[c];
+  const cur = start.slice(0, NC);
+  for (let k = 0; k < n; k++) items[cur[cell[k]]++] = o + k;
+  dots.index[d] = { start, items, gn, goff, cs, g };
+  detailDirty = true;
+}
+const detailGeo = new THREE.BoxGeometry(1, 1, 1);
+const detailStick = new Float32Array(DETAIL_CAP * 4), detailStickAttr = new THREE.InstancedBufferAttribute(detailStick, 4);
+detailGeo.setAttribute('aStick', detailStickAttr);
+const detailMesh = new THREE.InstancedMesh(detailGeo, nodeMat, DETAIL_CAP);
+detailMesh.count = 0; detailMesh.frustumCulled = false; detailMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+gScene.add(detailMesh);
+const DM = detailMesh.instanceMatrix.array, detailIdx = new Int32Array(DETAIL_CAP), detailD = new Float32Array(DETAIL_CAP);
+// links of the nearest cubes
+const DE_CAP = EDGE_CUBES * 9;
+const dePos = new Float32Array(DE_CAP * 6), deCol = new Float32Array(DE_CAP * 6);
+const deGeo = new THREE.BufferGeometry();
+const dePosAttr = new THREE.BufferAttribute(dePos, 3).setUsage(THREE.DynamicDrawUsage), deColAttr = new THREE.BufferAttribute(deCol, 3).setUsage(THREE.DynamicDrawUsage);
+deGeo.setAttribute('position', dePosAttr); deGeo.setAttribute('color', deColAttr); deGeo.setDrawRange(0, 0);
+const deMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false });
+const deLines = new THREE.LineSegments(deGeo, deMat); deLines.frustumCulled = false; gScene.add(deLines);
+let detailN = 0, detailDirty = false, detailAt = 0, detailLabels = [];
+const lastCam = new Float32Array(16);
+const candI = new Int32Array(300000), candD = new Float32Array(300000), stk = new Uint8Array(24);
+// where a state is drawn (cube layer node or dot), if its layer is finished
+function posOfCode(code) {
+  const j = dots.map[code];
+  if (j <= -2) return nodes[-2 - j];
+  if (j >= 0 && dots.dist[code] <= depthShown) return { x: dots.pos[j * 3], y: dots.pos[j * 3 + 1], z: dots.pos[j * 3 + 2], j };
+  return null;
+}
+function parentOf(code) { const j = dots.map[code]; return j >= 0 ? dots.parent[j] : -1; }
+function updateDetail(now) {
+  if (!dots) { if (detailMesh.count) { detailMesh.count = 0; detailN = 0; deGeo.setDrawRange(0, 0); detailLabels = []; } return; }
+  gCam.updateMatrixWorld();
+  const mw = gCam.matrixWorld.elements; let moved = false;
+  for (let i = 0; i < 16; i++) if (Math.abs(mw[i] - lastCam[i]) > 1e-4) { moved = true; break; }
+  if (!moved && !detailDirty) return;
+  if (now - detailAt < 120) return;
+  detailAt = now; detailDirty = false; lastCam.set(mw);
+  const w = gCanvas.clientWidth, h = gCanvas.clientHeight; if (!w || !h) return;
+  pm.multiplyMatrices(gCam.projectionMatrix, gCam.matrixWorldInverse);
+  const e = pm.elements, focal = h / 2 / Math.tan(gCam.fov * Math.PI / 360), P = dots.pos;
+  const cx = gCam.position.x, cy = gCam.position.y, cz = gCam.position.z;
+  let nc = 0;
+  for (let d = fullMax() + 1; d <= maxDepth(); d++) {
+    const ix = dots.index[d]; if (!ix) continue;
+    const rq = cubeSizeOf(d) * focal / MIN_PX, rq2 = rq * rq, G = ix.goff, gc = ix.g, gn = ix.gn;
+    // skip layers whose sphere is nowhere near the camera
+    const cr = Math.sqrt(cx * cx + cy * cy + cz * cz); if (Math.abs(cr - RADII[d]) > rq) continue;
+    if (cx - rq > G || cx + rq < -G || cy - rq > G || cy + rq < -G || cz - rq > G || cz + rq < -G) continue;
+    const x0 = gc(cx - rq), x1 = gc(cx + rq), y0 = gc(cy - rq), y1 = gc(cy + rq), z0 = gc(cz - rq), z1 = gc(cz + rq);
+    for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) {
+      const base = (gx * gn + gy) * gn;
+      for (let t = ix.start[base + z0], te = ix.start[base + z1 + 1]; t < te; t++) {
+        const i = ix.items[t], x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+        const dx = x - cx, dy = y - cy, dz = z - cz, d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 > rq2) continue;
+        const cw = e[3] * x + e[7] * y + e[11] * z + e[15]; if (cw <= 0.5) continue;
+        const X = (e[0] * x + e[4] * y + e[8] * z + e[12]) / cw; if (X < -1.05 || X > 1.05) continue;
+        const Y = (e[1] * x + e[5] * y + e[9] * z + e[13]) / cw; if (Y < -1.05 || Y > 1.05) continue;
+        candI[nc] = i; candD[nc] = d2; nc++;
+        if (nc >= candI.length) break;
+      }
+      if (nc >= candI.length) break;
+    }
+  }
+  let limit = Infinity;
+  if (nc > DETAIL_CAP) limit = candD.slice(0, nc).sort()[DETAIL_CAP - 1];
+  let m = 0;
+  for (let c = 0; c < nc && m < DETAIL_CAP; c++) {
+    if (candD[c] > limit) continue;
+    const i = candI[c], s = cubeSizeOf(dots.layerOf[i]), o = m * 16;
+    DM.fill(0, o, o + 16); DM[o] = s; DM[o + 5] = s; DM[o + 10] = s; DM[o + 15] = 1;
+    DM[o + 12] = P[i * 3]; DM[o + 13] = P[i * 3 + 1]; DM[o + 14] = P[i * 3 + 2];
+    decodeStickersInto(dots.codes[i], stk);
+    for (let q = 0; q < 4; q++) { let v = 0, mul = 1; for (let k = 0; k < 6; k++) { v += stk[q * 6 + k] * mul; mul *= 8; } detailStick[m * 4 + q] = v; }
+    detailIdx[m] = i; detailD[m] = candD[c]; m++; renderDirty = true;
+  }
+  detailN = m; detailMesh.count = m;
+  detailMesh.instanceMatrix.updateRange.offset = 0; detailMesh.instanceMatrix.updateRange.count = Math.max(16, m * 16);
+  detailMesh.instanceMatrix.needsUpdate = true;
+  detailStickAttr.updateRange.offset = 0; detailStickAttr.updateRange.count = Math.max(4, m * 4);
+  detailStickAttr.needsUpdate = true;
+  buildDetailLinks(e, focal);
+  const el = $('statDetail');
+  el.textContent = m ? fmt(m) + (m >= DETAIL_CAP ? '+' : '') + ' dots shown as cubes' : 'Zoom in to see dots as cubes';
+}
+function buildDetailLinks(e, focal) {
+  detailLabels = [];
+  const order = Array.from({ length: detailN }, (_, j) => j).sort((a, b) => detailD[a] - detailD[b]);
+  const nE = Math.min(EDGE_CUBES, detailN), P = dots.pos, mark = dots.mark, mv = activeMoves();
+  for (let q = 0; q < nE; q++) mark[detailIdx[order[q]]] = 1;
+  let s = 0;
+  for (let q = 0; q < nE; q++) {
+    const i = detailIdx[order[q]], c = dots.codes[i], d = dots.layerOf[i];
+    const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], size = cubeSizeOf(d);
+    const pred = dots.parent[i];
+    const cw = e[3] * x + e[7] * y + e[11] * z + e[15], px = size * focal / Math.max(0.5, cw);
+    const label = q < LABEL_CUBES && px >= LABEL_MIN_PX;
+    for (const mvv of mv) {
+      const n = applyCode(c, mvv.idx), dn = dots.dist[n];
+      if (dn === 255 || dn > depthShown) continue;
+      const b = posOfCode(n); if (!b) continue;
+      const tree = dn === d - 1 ? n === pred : dn === d + 1 ? parentOf(n) === c : false;
+      if (view === 'tree' && !tree) continue;
+      if (view === 'extra' && tree) continue;
+      if (label) {
+        const vx = b.x - x, vy = b.y - y, vz = b.z - z, l = Math.hypot(vx, vy, vz) || 1, t = size * 1.7 / l;
+        detailLabels.push({ x: x + vx * t, y: y + vy * t, z: z + vz * t, mv: mvv });
+      }
+      if (b.j != null && b.j < i && mark[b.j]) continue;     // drawn from the other end
+      if (s >= DE_CAP) continue;
+      const col = EDGE_COL[mvv.face], k = tree ? 1 : 0.55, o = s * 6;
+      dePos[o] = x; dePos[o + 1] = y; dePos[o + 2] = z; dePos[o + 3] = b.x; dePos[o + 4] = b.y; dePos[o + 5] = b.z;
+      deCol[o] = deCol[o + 3] = col.r * k + (1 - k) * STAGE.r; deCol[o + 1] = deCol[o + 4] = col.g * k + (1 - k) * STAGE.g; deCol[o + 2] = deCol[o + 5] = col.b * k + (1 - k) * STAGE.b;
+      s++;
+    }
+  }
+  for (let q = 0; q < nE; q++) mark[detailIdx[order[q]]] = 0;
+  dePosAttr.updateRange.offset = 0; dePosAttr.updateRange.count = Math.max(6, s * 6); dePosAttr.needsUpdate = true;
+  deColAttr.updateRange.offset = 0; deColAttr.updateRange.count = Math.max(6, s * 6); deColAttr.needsUpdate = true;
+  deGeo.setDrawRange(0, s * 2);
+}
+// hover and click on the cubes drawn for nearby dots
+function pickDetail() {
+  if (!detailN) return -1;
+  const w = gCanvas.clientWidth, h = gCanvas.clientHeight;
+  gCam.updateMatrixWorld(); pm.multiplyMatrices(gCam.projectionMatrix, gCam.matrixWorldInverse);
+  const e = pm.elements, focal = h / 2 / Math.tan(gCam.fov * Math.PI / 360), P = dots.pos;
+  let best = -1, bestW = Infinity;
+  for (let m = 0; m < detailN; m++) {
+    const i = detailIdx[m], x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+    const cw = e[3] * x + e[7] * y + e[11] * z + e[15]; if (cw <= 0.5 || cw >= bestW) continue;
+    const sx = ((e[0] * x + e[4] * y + e[8] * z + e[12]) / cw + 1) / 2 * w, sy = (1 - (e[1] * x + e[5] * y + e[9] * z + e[13]) / cw) / 2 * h;
+    const r = Math.max(5, cubeSizeOf(dots.layerOf[i]) * 0.75 * focal / cw), dx = sx - mx, dy = sy - my;
+    if (dx * dx + dy * dy <= r * r) { best = i; bestW = cw; }
+  }
+  return best;
+}
+function dotHover(i) {
+  const code = dots.codes[i], P = dots.pos;
+  return { x: P[i * 3], y: P[i * 3 + 1], z: P[i * 3 + 2], size: cubeSizeOf(dots.layerOf[i]), depth: dots.layerOf[i], code, dotIdx: i };
+}
+function freeDots() {
+  if (dots) for (const L of dots.layers) if (L) { gScene.remove(L.pts); L.g.dispose(); L.mat.dispose(); }
+  bundleTree.g.setDrawRange(0, 0); bundleExtra.g.setDrawRange(0, 0); bundleTree.n = bundleExtra.n = 0;
+  dots = null; job = null; detailMesh.count = 0; detailN = 0; flight = null; detailLabels = []; deGeo.setDrawRange(0, 0);
+  const el = document.getElementById('statDetail'); if (el) el.textContent = '';
+}
+// while a layer is being built, count only the states already revealed (and that share of its links)
+function shownIn(d) { return job && job.nd === d ? job.shown : (dots && dots.cnt[d]) || 0; }
+const totalStates = () => { let n = nodes.length; if (dots) for (let d = fullMax() + 1; d <= maxDepth(); d++) n += shownIn(d); return n; };
+const totalEdges = () => edges.length + (dots ? dots.edges + dots.same / 2 + (job ? (job.edges + job.same / 2) * job.shown / Math.max(1, dots.cnt[job.nd]) : 0) : 0);
+function stateCode(key) { return dots ? encodeKey(key) : -1; }
+function dotPoint(code) {
+  const i = dots.map[code];
+  if (i <= -2) return nodes[-2 - i];
+  if (i >= 0) { const x = dots.pos[i * 3], y = dots.pos[i * 3 + 1], z = dots.pos[i * 3 + 2]; return { x, y, z, size: cubeSizeOf(dots.dist[code]), dot: true }; }
+  return null;
+}
+// one shortest route from solved, found by stepping down the stored distances
+function routeTo(code, dist) {
+  dist = dist || dots.dist;
+  const out = [], mv = activeMoves(); let c = code, d = dist[c];
+  while (d > 0 && d !== 255) {
+    let next = -1;
+    for (const m of mv) { const nc = applyCode(c, m.idx); if (dist[nc] === d - 1) { out.push(inverseOf(m)); next = nc; break; } }
+    if (next < 0) break;
+    c = next; d--;
+  }
+  return out.reverse();
+}
+// Distance from solved for every state (one breadth-first search, under a second), so any state can be
+// found and solved even when its layer is not drawn yet.
+let fullDist = null, fullDistHalf = null;
+function ensureFullDist() {
+  if (fullDist && fullDistHalf === halfTurns) return fullDist;
+  ensureTables();
+  const dist = new Uint8Array(NSTATE).fill(255), mv = activeMoves().map(m => m.idx);
+  dist[0] = 0; let fr = new Int32Array([0]);
+  for (let d = 0; fr.length; d++) {
+    const nx = new Int32Array(totals()[d + 1] || 0); let n = 0;
+    for (let k = 0; k < fr.length; k++) {
+      const c = fr[k], p = (c / NORI) | 0, o = c - p * NORI;
+      for (const m of mv) { const nc = PT[m * NPERM + p] * NORI + OT[m * NORI + o]; if (dist[nc] === 255) { dist[nc] = d + 1; nx[n++] = nc; } }
+    }
+    fr = nx.subarray(0, n);
+  }
+  fullDist = dist; fullDistHalf = halfTurns;
+  return dist;
+}
+function withFullDist(cb) {
+  if (fullDist && fullDistHalf === halfTurns) { cb(fullDist); return; }
+  showBusy('Measuring the distance of all ' + fmt(NSTATE) + ' states…', 0.5);
+  requestAnimationFrame(() => setTimeout(() => { const d = ensureFullDist(); showBusy(null); cb(d); }, 0));
+}
+// moves from solved to a code: the graph's own distances when its layer is drawn, else the full table
+function routeFromSolved(code, cb) {
+  if (dots && dots.dist[code] !== 255) { cb(routeTo(code, dots.dist)); return; }
+  withFullDist(d => cb(routeTo(code, d)));
+}
+// select a state: the cube jumps there at once; Solve or Play from solved then walk the route
+function jumpTo(key) {
+  queue.length = 0; clearLoop(); flyWhenDone = false;
+  queue.push({ set: key });
+}
+// Play from solved: reset to solved, then build the current state along a shortest route
+function playFromSolved() {
+  if (busy()) return;
+  const c = canonical(curKey);
+  let route = null;
+  if (selected) route = selected.depth ? routeMoves(routes(selected, 1)[0]) : [];
+  else if (selDot) route = selDot.route;
+  else if (selFree) route = selFree.route;
+  if (!route || !route.length) return;
+  clearLoop();
+  queue.push({ set: SOLVED }, { wait: 300 });
+  pushWalk(route);
+  for (let i = c.seq.length - 1; i >= 0; i--) { const r = c.seq[i]; queue.push({ mv: ROT_MOVES.find(x => x.ax === r.ax && x.q === (r.q === 2 ? 2 : -r.q)), dur: 380 }); }
+}
+function travelToCode(code) {
+  if (busy()) return;
+  clearLoop();
+  const route = routeTo(code);
+  queue.push({ set: SOLVED }, { wait: 250 });
+  pushWalk(route);
+}
+
+// ---------- finding a state ----------
+// Accepts a scramble (U R F D L B with ' or 2, and x y z) or a 24-letter facelet string in the order
+// U R F D L B, each face read row by row as in the net, with W Y R O G B for the colours.
+const ALL_NAMED = {};
+for (const m of [...ALL_MOVES, ...OPP_MOVES, ...ROT_MOVES]) ALL_NAMED[m.name] = m;
+function parseState(text) {
+  const t = text.trim();
+  if (!t) return { error: 'Type a scramble or a facelet string first.' };
+  const letters = t.toUpperCase().replace(/[^A-Z]/g, '');
+  const looksFacelets = t.includes(':') || (!/\s/.test(t) && letters.length >= 16 && !/['’2]/.test(t));
+  if (looksFacelets && (letters.length !== 24 || !/^[WYROGB]+$/.test(letters))) {
+    const bad = [...new Set(letters.replace(/[WYROGB]/g, ''))];
+    return { error: bad.length ? 'Facelet strings use only the letters W Y R O G B; this one also has ' + bad.join(', ') + '.'
+                               : 'A facelet string needs 24 letters, 4 per face; this one has ' + letters.length + '.' };
+  }
+  if (letters.length === 24 && /^[WYROGB]+$/.test(letters) && !/['’2]/.test(t)) {
+    const counts = {}; for (const ch of letters) counts[ch] = (counts[ch] || 0) + 1;
+    const off = [...COLOR_LETTER].filter(ch => counts[ch] !== 4).map(ch => (counts[ch] || 0) + ' ' + ch);
+    if (off.length) return { error: 'Each colour must appear exactly 4 times; this string has ' + off.join(', ') + '.' };
+    const arr = new Array(24); let i = 0;
+    for (const f of STRING_ORDER) for (let q = 0; q < 4; q++) arr[NET_SLOTS[f][q]] = String(COLOR_LETTER.indexOf(letters[i++]));
+    return { key: arr.join(''), kind: 'facelets' };
+  }
+  const toks = t.replace(/[’`]/g, "'").match(/\S/g) ? t.replace(/[’`]/g, "'").match(/[A-Za-z][2']*'?|\S/g) : [];
+  let key = SOLVED; const used = [];
+  for (const tok of toks) {
+    const base = tok[0], mod = tok.slice(1).replace("2'", '2');
+    const m = ALL_NAMED[base + mod];
+    if (!m) return { error: 'I don\'t know the move "' + tok + '". Use U R F D L B with \' or 2, or x y z for turning the whole cube.' };
+    key = applyMove(key, m); used.push(m.name);
+  }
+  return { key, kind: 'moves', moves: used };
+}
+function findState(held, label) {
+  const note = $('findNote');
+  const c = canonical(held);
+  const ok = c.key[DLB[0]] === '1' && c.key[DLB[1]] === '3' && c.key[DLB[2]] === '5';
+  ensureTables();
+  const code = ok ? encodeKey(c.key) : -1;
+  if (!ok || !(code >= 0) || decodeCode(code) !== c.key) {
+    note.classList.add('err');
+    note.textContent = 'That is not a reachable cube: a corner has impossible colours, or is twisted on its own. Check the string against the net.';
+    return;
+  }
+  note.classList.remove('err');
+  if (busy()) { queue.length = 0; }
+  clearLoop();
+  routeFromSolved(code, route => {
+    const drawn = (dots && dots.dist[code] !== 255 && dots.dist[code] <= depthShown) || byKey.has(c.key);
+    const d = route.length;
+    note.textContent = (label ? label + ': ' : '') + (d === 0 ? 'that is the solved cube.' :
+      d + (halfTurns ? (d === 1 ? ' move' : ' moves') : (d === 1 ? ' quarter turn' : ' quarter turns')) + ' from solved. Its shortest route is highlighted in the graph' +
+      (drawn ? '' : ' as far as the graph is drawn') + '. Press Solve to walk it back, or Play from solved to watch it being built.');
+    queue.push({ set: held });
+    flyWhenDone = drawn;
+  });
+}
+document.getElementById('findForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const r = parseState($('stateInput').value);
+  if (r.error) { const n = $('findNote'); n.classList.add('err'); n.textContent = r.error; return; }
+  findState(r.key, r.kind === 'moves' ? 'Scramble ' + (r.moves.join(' ') || '(no moves)') : 'Facelets');
+});
+document.getElementById('btnRandom').addEventListener('click', () => {
+  ensureTables();
+  const code = Math.floor(Math.random() * NSTATE), key = decodeCode(code);
+  $('stateInput').value = faceletString(key);
+  findState(key, 'Random state');
+});
+
+// ---------- UI ----------
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString('en-US');
+function chip(mv) {
+  const el = document.createElement('span'); el.className = 'chip';
+  el.innerHTML = '<span class="sw" style="--sw:var(--c-' + FACE_NAME[mv.face] + ')"></span>' + mv.name;
+  return el;
+}
+function padButton(mv) {
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = mv.kind === 'rot' ? 'mv rot' : 'mv';
+  btn.setAttribute('aria-label', (mv.kind === 'rot' ? 'Rotate the whole cube ' : 'Turn ') + mv.name);
+  btn.innerHTML = (mv.kind === 'rot' ? '' : '<span class="sw" style="--sw:var(--c-' + FACE_NAME[mv.face] + ')"></span>') + mv.name;
+  btn.addEventListener('click', () => queueMove(mv));
+  return btn;
+}
+function buildPad() {
+  const pad = $('pad'); pad.innerHTML = '';
+  const ok = m => halfTurns || m.q !== 2;
+  pad.style.gridTemplateColumns = 'repeat(' + (halfTurns ? 6 : 4) + ', minmax(0, 1fr))';
+  for (let i = 0; i < 3; i++) {
+    ALL_MOVES.filter(m => m.ax === BASE[i].ax && ok(m)).forEach(m => pad.appendChild(padButton(m)));
+    OPP_MOVES.filter(m => m.ax === OPP[i].ax && ok(m)).forEach(m => pad.appendChild(padButton(m)));
+  }
+  const rp = $('padRot'); rp.innerHTML = '';
+  ROT_MOVES.filter(m => m.q !== 2).forEach(m => rp.appendChild(padButton(m)));
+}
+// ---------- net & facelet strings ----------
+const NET_POS = { 0: [2, 1], 3: [1, 2], 4: [2, 2], 2: [3, 2], 5: [4, 2], 1: [2, 3] };
+const netEls = [];
+(function buildNet() {
+  const net = $('net');
+  for (const f of [0, 3, 4, 2, 5, 1]) {
+    const fd = document.createElement('div'); fd.className = 'face f-' + FACE_NAME[f];
+    fd.style.gridColumn = NET_POS[f][0]; fd.style.gridRow = NET_POS[f][1];
+    fd.title = FACE_NAME[f] + ' face';
+    const els = [];
+    for (let i = 0; i < 4; i++) { const st = document.createElement('span'); st.className = 'st'; fd.appendChild(st); els.push(st); }
+    netEls[f] = els; net.appendChild(fd);
+  }
+})();
+function renderNet() {
+  for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++)
+    netEls[f][i].style.background = 'var(--c-' + FACE_NAME[curKey.charCodeAt(NET_SLOTS[f][i]) - 48] + ')';
+}
+function renderOrientation(c) {
+  const held = faceletString(curKey), canon = faceletString(c.key);
+  $('flHeld').textContent = held;
+  $('flCanon').textContent = canon;
+  $('flCanon').classList.toggle('same', held === canon);
+  const std = c.seq.length === 0;
+  $('orientTag').classList.toggle('off', !std);
+  $('orientText').textContent = std ? 'Standard orientation' : 'Held in another orientation';
+  $('orientNote').innerHTML = std
+    ? 'The yellow-orange-blue corner sits at down-left-back with yellow down, so the held and canonical strings match.'
+    : 'Rotating the whole cube with <b>' + c.seq.map(m => m.name).join(' ') + '</b> brings the yellow-orange-blue corner back to down-left-back. The canonical string is what the graph uses, so both strings name the same state.';
+  $('btnNorm').disabled = std;
+}
+$('btnNorm').addEventListener('click', normalize);
+$('btnCopy').addEventListener('click', () => {
+  const el = $('flHeld'), txt = el.textContent, b = $('btnCopy');
+  const done = () => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy string'; }, 1400); };
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = 'Selected, press Ctrl+C'; setTimeout(() => { b.textContent = 'Copy string'; }, 2200); };
+  try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+});
+let selected = null, selDot = null;
+let selFree = null;   // a state that is not drawn yet, when its distance is known
+function onState() {
+  renderDirty = true; cubeDirty = true;
+  const c = canonical(curKey);
+  selected = byKey.get(c.key) || null; selDot = null; selFree = null;
+  if (!selected && dots) {
+    const code = encodeKey(c.key), dd = dots.dist[code];
+    if (dd !== 255 && dd <= depthShown) selDot = { code, depth: dd, route: routeTo(code) };
+  }
+  if (!selected && !selDot && fullDist && fullDistHalf === halfTurns) {
+    const code = encodeKey(c.key);
+    if (decodeCode(code) === c.key) selFree = { code, depth: fullDist[code], route: routeTo(code, fullDist) };
+  }
+  if (keepBox) { boxKey = curKey; if (!queue.length) keepBox = false; }
+  const nb = selOn && boxKey !== null && boxKey === curKey;
+  if (nb !== boxOn) { boxOn = nb; elDirty = true; }
+  renderNet(); renderOrientation(c);
+  $('cbDepth').textContent = selected ? selected.depth : selDot ? selDot.depth : selFree ? selFree.depth : '>' + depthShown;
+  const dep = selected ? selected.depth : selDot ? selDot.depth : selFree ? selFree.depth : 0;
+  $('btnPlay').disabled = dep <= 0;
+  // follow the cube: after every turn, fly to the state it is in now
+  if ($('optFollow').checked && (busy() || anim)) { const P = currentPoint(); if (P) flyTo(P, walkFly() * 0.95); }
+  computeHighlight();
+  renderRoutes();
+}
+function renderRoutes() {
+  const box = $('routes'), note = $('routesNote'), btn = $('btnLoop');
+  box.innerHTML = '';
+  if (!selOn) {
+    note.textContent = 'No state selected. Click a cube or dot in the graph to select it. Solve and Play from solved still work on the cube as it is.';
+    btn.textContent = 'Walk the loop'; btn.disabled = true;
+    return;
+  }
+  const f = loop ? loop.n : selected;
+  if (!f && selFree) {
+    const row = document.createElement('div'); row.className = 'route r1';
+    const d = document.createElement('span'); d.className = 'rdot'; row.appendChild(d);
+    selFree.route.forEach(m => row.appendChild(chip(m)));
+    box.appendChild(row);
+    note.textContent = 'This state is ' + selFree.depth + (halfTurns ? (selFree.depth === 1 ? ' move' : ' moves') : (selFree.depth === 1 ? ' turn' : ' turns')) + ' from solved, in layer ' + selFree.depth + ', which is not drawn yet. Grow the graph to see it.';
+    btn.textContent = 'Walk the loop'; btn.disabled = true;
+    return;
+  }
+  if (!f && selDot) {
+    const row = document.createElement('div'); row.className = 'route r1';
+    const d = document.createElement('span'); d.className = 'rdot'; row.appendChild(d);
+    selDot.route.forEach(m => row.appendChild(chip(m)));
+    box.appendChild(row);
+    note.textContent = 'One shortest route is shown. Beyond the cube layers the page stores each state\'s distance from solved, which is enough to find a route, but it does not count every route.';
+    const t = nodes.find(n => n.depth === 2 && n.paths >= 2);
+    btn.textContent = 'Go to a state with two routes'; btn.disabled = !t;
+    return;
+  }
+  if (!f) {
+    note.textContent = 'This state is not in the graph yet. Grow more layers to reach it, or go back to solved.';
+    btn.textContent = 'Walk the loop'; btn.disabled = true; return;
+  }
+  if (f.depth === 0) {
+    const r = document.createElement('div'); r.className = 'route';
+    const s = document.createElement('span'); s.className = 'chip'; s.textContent = 'Solved'; r.appendChild(s); box.appendChild(r);
+  } else {
+    routes(f, 4).forEach((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'route' + (i === 0 ? ' r1' : i === 1 ? ' r2' : '');
+      const d = document.createElement('span'); d.className = 'rdot'; row.appendChild(d);
+      routeMoves(r).forEach(m => row.appendChild(chip(m)));
+      box.appendChild(row);
+    });
+  }
+  if (loop) {
+    note.textContent = 'Walking a loop of ' + loop.len + ' turns: back along the blue route to where the two routes split, then out along the pink one. The cube ends exactly where it started.';
+  } else if (f.depth === 0) {
+    note.textContent = 'This is the center of the graph. Pick a state at distance 2 or more to see several routes.';
+  } else if (f.paths === 1) {
+    note.textContent = 'Only one shortest route reaches this state.';
+  } else {
+    note.textContent = fmt(f.paths) + ' different shortest routes reach this state' + (f.paths > 4 ? ' (first 4 shown)' : '') + '. Two different routes to the same state form a loop.';
+  }
+  const target = nodes.find(n => n.depth === 2 && n.paths >= 2) || nodes.find(n => n.paths >= 2);
+  if (f.paths >= 2) { btn.textContent = 'Walk the loop through routes 1 and 2'; btn.disabled = !!loop; }
+  else { btn.textContent = 'Go to a state with two routes'; btn.disabled = !target; }
+}
+$('btnLoop').addEventListener('click', () => {
+  if (busy()) return;
+  if (selected && selected.paths >= 2) walkLoop();
+  else { const t = nodes.find(n => n.depth === 2 && n.paths >= 2) || nodes.find(n => n.paths >= 2); if (t) jumpTo(t.key); }
+});
+$('btnPlay').addEventListener('click', playFromSolved);
+$('optSpeed').addEventListener('input', () => { $('speedText').textContent = SPEEDS[+$('optSpeed').value].name; });
+
+function refreshUI() {
+  const max = maxDepth(), tot = totals();
+  renderTotals();
+  applyView();
+  $('labelsText').textContent = 'Label links with their turns (labels appear as you zoom close enough to read them)';
+  elDirty = true;
+  const grow = $('btnGrow');
+  if (depthShown >= max) {
+    grow.textContent = 'All ' + max + ' layers grown'; grow.disabled = true; autoOn = false;
+    $('growNote').textContent = 'Every one of the ' + fmt(NSTATE) + ' states is drawn. None is more than ' + max + (halfTurns ? ' moves' : ' quarter turns') + ' from solved.';
+    setAuto(false);
+  } else {
+    grow.textContent = 'Grow layer ' + (depthShown + 1); grow.disabled = growing;
+    const add = tot[depthShown + 1], asDots = depthShown + 1 > fullMax();
+    $('growNote').textContent = 'Adds ' + fmt(add) + ' new states' + (asDots ? ', drawn as dots.' : '.') +
+      (!asDots && add > 20000 ? ' The layout takes several seconds to settle.' : !asDots && add > 5000 ? ' The layout takes a few seconds to settle.' : '');
+  }
+  renderCensus();
+  renderRoutesIn();
+  onState();
+}
+function drawnIn(d) {
+  if (d <= Math.min(depthShown, fullMax())) return totals()[d];
+  return d > fullMax() ? shownIn(d) : 0;
+}
+function renderTotals() {
+  const n = totalStates(), e = totalEdges(), extra = e - (n - 1);
+  $('statStates').textContent = fmt(n);
+  $('statEdges').textContent = 'states · ' + fmt(e) + ' links';
+  $('statLoops').textContent = fmt(extra) + ' independent loops';
+  $('figTree').textContent = fmt(n - 1);
+  $('figExtra').textContent = fmt(extra);
+  $('figLoops').textContent = fmt(extra);
+}
+function renderCensus() {
+  const tot = totals(), F = fullMax(), lmax = Math.log10(Math.max(...tot) + 1);
+  $('census').innerHTML = tot.map((t, d) => {
+    const dr = drawnIn(d), done = dr === t && dr > 0, active = job && job.nd === d;
+    const cls = (done ? 'done' : '') + (d === depthShown && !job ? ' cur' : '') + (active ? ' cur' : '');
+    const w = (Math.log10(t + 1) / lmax * 100).toFixed(1), fw = (dr / t * 100).toFixed(1);
+    const kind = d > F ? ' <span class="dotmark" title="drawn as dots"></span>' : '';
+    return '<tr class="' + cls + '"><td>' + d + kind + (d === tot.length - 1 ? ' <span style="color:var(--muted)">max</span>' : '') + '</td><td class="n">' + (dr ? fmt(dr) : '–') +
+      '</td><td class="n">' + fmt(t) + '</td><td class="barcell"><div class="track" style="width:' + w + '%"><div class="fill" style="width:' + fw + '%"></div></div></td></tr>';
+  }).join('');
+}
+
+function applyView() {
+  renderDirty = true;
+  treeL.l.visible = view !== 'extra';
+  crossL.l.visible = view !== 'tree';
+  const showB = $('optBundles').checked;
+  bundleTree.l.visible = showB && view !== 'extra';
+  bundleExtra.l.visible = showB && view !== 'tree';
+  const n = nodes.length, dense = n > 12000 ? 2 : n > 2500 ? 1 : 0;
+  treeL.mat.opacity = [0.85, 0.6, 0.32][dense];
+  crossL.mat.opacity = view === 'extra' ? [0.9, 0.6, 0.3][dense] : [0.3, 0.18, 0.08][dense];
+  document.querySelectorAll('.seg [data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === view ? 'true' : 'false'));
+}
+document.querySelectorAll('.seg [data-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.view; applyView(); detailDirty = true; elDirty = true; }));
+document.querySelectorAll('.seg [data-color]').forEach(b => b.addEventListener('click', () => {
+  colorMode = b.dataset.color;
+  document.querySelectorAll('.seg [data-color]').forEach(x => x.setAttribute('aria-pressed', x.dataset.color === colorMode ? 'true' : 'false'));
+  $('pinLegend').hidden = colorMode !== 'routes';
+  repaintAll();
+}));
+$('optBundles').addEventListener('change', applyView);
+
+// Growing: show what is coming, let the browser paint, then build the layer.
+let growing = false, autoOn = false, settledAt = 0, alpha0 = 1;
+function grow() {
+  if (growing || job || depthShown >= maxDepth()) return false;
+  growing = true;
+  const add = totals()[depthShown + 1];
+  $('btnGrow').disabled = true;
+  if (depthShown >= fullMax()) {
+    showBusy('Layer ' + (depthShown + 1) + ' · preparing…', 0);
+    requestAnimationFrame(() => setTimeout(() => { startDotLayer(); renderCensus(); }, 0));
+    return true;
+  }
+  showBusy('Adding ' + fmt(add) + ' states…', 0);
+  requestAnimationFrame(() => setTimeout(() => { expandLayer(); alpha0 = alpha; }, 0));
+  return true;
+}
+let busyShown = '';
+function showBusy(text, frac) {
+  const el = $('statBusy');
+  const sig = text == null ? '' : text + '|' + Math.round(frac * 50);
+  if (sig === busyShown) return;
+  busyShown = sig;
+  if (text == null) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = text + '<i><b style="width:' + Math.round(frac * 100) + '%"></b></i>';
+}
+function setAuto(on) {
+  if (on && depthShown >= maxDepth()) on = false;
+  autoOn = on;
+  $('btnAuto').setAttribute('aria-pressed', on ? 'true' : 'false');
+  if (on && alpha < 0.05) grow();
+}
+$('btnGrow').addEventListener('click', () => { grow(); });
+$('btnAuto').addEventListener('click', () => setAuto(!autoOn));
+$('btnReset').addEventListener('click', () => { setAuto(false); startOver(); });
+$('btnHome').addEventListener('click', () => { if (busy()) { queue.length = 0; flyWhenDone = false; } else goHome(); });
+$('optHalf').addEventListener('change', (e) => { halfTurns = e.target.checked; setAuto(false); startOver(); });
+$('optLabels').addEventListener('change', (e) => { labelAll = e.target.checked; elDirty = true; });
+
+function startOver() {
+  queue.length = 0; loop = null;
+  if (anim && anim.layer) { anim.layer.forEach(c => { cubeRoot.add(c.g); c.g.position.set(c.p[0] * 0.5, c.p[1] * 0.5, c.p[2] * 0.5); c.g.rotation.set(0, 0, 0); }); cubeRoot.remove(anim.pivot); }
+  anim = null; cbMove.classList.remove('on');
+  curKey = SOLVED; paintCube(curKey);
+  growing = false; showBusy(null); freeDots(); computeRadii();
+  resetGraph(); buildPad(); computeLabelSet(); refreshUI();
+}
+
+// ---------- picking ----------
+let hover = null, pointerIn = false, mx = 0, my = 0, downX = 0, downY = 0, needPick = false;
+const tip = $('tip');
+gCanvas.addEventListener('pointermove', (e) => { const r = gCanvas.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top; pointerIn = true; needPick = true; });
+gCanvas.addEventListener('pointerleave', () => { pointerIn = false; hover = null; tip.hidden = true; gCanvas.classList.remove('pointing'); });
+gCanvas.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; });
+gCanvas.addEventListener('pointerup', (e) => {
+  if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return;
+  const r = gCanvas.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top;
+  // clicking the state whose turn boxes are showing hides them again; any other state is selected
+  const choose = (k) => {
+    if (boxOn && k === curKey && !busy()) { boxKey = null; boxOn = false; elDirty = true; return; }
+    jumpTo(k); boxKey = k;
+  };
+  const n = pick(); if (n) { choose(n.key); return; }
+  const di = pickDetail(); if (di >= 0) { choose(decodeCode(dots.codes[di])); return; }
+  const c = pickDot(); if (c >= 0) { choose(decodeCode(c)); return; }
+  deselect();
+});
+// double-click: fly the camera close to that spot
+gCanvas.addEventListener('dblclick', (e) => {
+  const r = gCanvas.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top;
+  let t = pick();
+  if (!t) { const di = pickDetail(); if (di >= 0) t = dotHover(di); }
+  if (!t && dots) { const c = pickDot(); if (c >= 0) t = dotPoint(c); }
+  if (t) flyTo(t);
+});
+let flight = null;
+function flyTo(t, dur) {
+  fitDist = null; gControls.autoRotate = false;
+  const to = new THREE.Vector3(t.x, t.y, t.z);
+  const dir = gCam.position.clone().sub(gControls.target).normalize();
+  const dist = t.dot || t.dotIdx != null ? 70 : Math.max(18, (t.size || 2) * 14);
+  flight = { t0: performance.now(), dur: RM ? 1 : (dur || 900), fromT: gControls.target.clone(), toT: to, fromP: gCam.position.clone(), toP: to.clone().add(dir.multiplyScalar(dist)) };
+}
+// where the current state is drawn, if anywhere
+function currentPoint() { return selected || (selDot && dotPoint(selDot.code)) || null; }
+let flyWhenDone = false;
+$('btnZoomCur').addEventListener('click', () => {
+  const S = selected || (selDot && dotPoint(selDot.code));
+  if (S) flyTo(S);
+});
+$('btnZoomAll').addEventListener('click', () => {
+  flight = { t0: performance.now(), dur: RM ? 1 : 900, fromT: gControls.target.clone(), toT: new THREE.Vector3(0, 0, 0), fromP: gCam.position.clone(),
+             toP: gCam.position.clone().sub(gControls.target).normalize().multiplyScalar((RADII[Math.min(depthShown, RADII.length - 1)] + 26) * 2.55 + 40) };
+});
+// dots are only picked on click: projecting millions of points on every pointer move would be too slow
+function pickDot() {
+  if (!dots) return -1;
+  const w = gCanvas.clientWidth, h = gCanvas.clientHeight;
+  gCam.updateMatrixWorld(); pm.multiplyMatrices(gCam.projectionMatrix, gCam.matrixWorldInverse);
+  const e = pm.elements, focal = h / 2 / Math.tan(gCam.fov * Math.PI / 360), P = dots.pos;
+  let best = -1, bestW = Infinity;
+  for (let d = fullMax() + 1; d <= maxDepth(); d++) {
+    const n = dots.cnt[d]; if (!n) continue;
+    const rpx = Math.max(5, dotPx(d)), o = dots.off[d];
+    for (let i = o; i < o + n; i++) {
+      const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+      const cw = e[3] * x + e[7] * y + e[11] * z + e[15];
+      if (cw <= 0.5 || cw >= bestW) continue;
+      const sx = ((e[0] * x + e[4] * y + e[8] * z + e[12]) / cw + 1) / 2 * w;
+      const sy = (1 - (e[1] * x + e[5] * y + e[9] * z + e[13]) / cw) / 2 * h;
+      const dx = sx - mx, dy = sy - my;
+      if (dx * dx + dy * dy <= rpx * rpx) { best = i; bestW = cw; }
+    }
+  }
+  return best < 0 ? -1 : dots.codes[best];
+}
+// Screen-space picking: project every cube centre once and take the nearest one under the pointer.
+const pm = new THREE.Matrix4();
+function pick() {
+  const w = gCanvas.clientWidth, h = gCanvas.clientHeight; if (!w || !nodes.length) return null;
+  gCam.updateMatrixWorld(); pm.multiplyMatrices(gCam.projectionMatrix, gCam.matrixWorldInverse);
+  const e = pm.elements, focal = h / 2 / Math.tan(gCam.fov * Math.PI / 360);
+  let best = null, bestW = Infinity;
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    const cw = e[3] * n.x + e[7] * n.y + e[11] * n.z + e[15];
+    if (cw <= 0.5 || cw >= bestW) continue;
+    const sx = ((e[0] * n.x + e[4] * n.y + e[8] * n.z + e[12]) / cw + 1) / 2 * w;
+    const sy = (1 - (e[1] * n.x + e[5] * n.y + e[9] * n.z + e[13]) / cw) / 2 * h;
+    const r = Math.max(5, n.size * 0.75 * focal / cw), dx = sx - mx, dy = sy - my;
+    if (dx * dx + dy * dy <= r * r) { best = n; bestW = cw; }
+  }
+  return best;
+}
+function updateHover() {
+  if (!needPick || !pointerIn) return; needPick = false;
+  hover = pick();
+  if (!hover && detailN) { const i = pickDetail(); if (i >= 0) hover = dotHover(i); }
+  gCanvas.classList.toggle('pointing', !!hover);
+  if (!hover) { tip.hidden = true; return; }
+  const p = (hover.dotIdx != null ? routeTo(hover.code) : pathOf(hover)).map(m => m.name).join(' ');
+  tip.innerHTML = '<span class="d">' + hover.depth + (hover.depth === 1 ? ' turn' : ' turns') + '</span>' + (p || 'solved') +
+    (hover.paths > 1 ? '<span class="d" style="margin:0 0 0 8px">' + fmt(hover.paths) + ' routes</span>' : '');
+  tip.hidden = false;
+  const W = stage.clientWidth, tw = tip.offsetWidth;
+  tip.style.left = Math.min(mx + 14, W - tw - 8) + 'px'; tip.style.top = (my + 16) + 'px';
+}
+
+// ---------- turn labels (HTML, projected each frame) ----------
+const labelsEl = $('labels'); const pool = []; const pv = new THREE.Vector3();
+function getLabel(i) {
+  while (pool.length <= i) {
+    const d = document.createElement('div'); d.className = 'lab'; d.hidden = true;
+    d.addEventListener('click', () => { if (d._mv && !busy()) { keepBox = true; queueGraphMove(d._mv); } });
+    labelsEl.appendChild(d); pool.push(d);
+  }
+  return pool[i];
+}
+function placeLabels() {
+  const w = stage.clientWidth, h = stage.clientHeight; let k = 0;
+  const put = (x, y, z, mv, sel) => {
+    pv.set(x, y, z).project(gCam);
+    if (pv.z > 1 || pv.z < -1) return;
+    const sx = (pv.x + 1) / 2 * w, sy = (1 - pv.y) / 2 * h;
+    if (sx < -30 || sx > w + 30 || sy < -30 || sy > h + 30) return;
+    const d = getLabel(k++);
+    if (d._t !== mv.name) { d.textContent = mv.name; d._t = mv.name; }
+    if (d._f !== mv.face) { d.style.setProperty('--lc', FACE_CSS[mv.face]); d._f = mv.face; }
+    const cls = sel ? 'lab sel' : 'lab'; if (d.className !== cls) d.className = cls;
+    d._mv = sel ? mv : null;
+    if (sel) d.title = 'Turn ' + mv.name; else d.removeAttribute('title');
+    d.style.transform = 'translate(' + sx.toFixed(1) + 'px,' + sy.toFixed(1) + 'px) translate(-50%,-50%)';
+    d.hidden = false;
+  };
+  // the current state's turns (boxed, clickable): only when they are big enough on screen to read,
+  // the same rule as the other labels, so they never clutter the view from far away
+  const scr = (x, y, z) => { pv.set(x, y, z).project(gCam); return pv.z > 1 || pv.z < -1 ? null : [(pv.x + 1) / 2 * w, (1 - pv.y) / 2 * h]; };
+  if (boxesShown() && selected && !anim) {
+    const A = scr(selected.x, selected.y, selected.z);
+    const focalB = h / 2 / Math.tan(gCam.fov * Math.PI / 360);
+    const rpx = selected.size * 0.9 * focalB / Math.max(1, Math.hypot(selected.x - gCam.position.x, selected.y - gCam.position.y, selected.z - gCam.position.z));
+    for (const e of selected.adj) {
+      if (!edgeVisible(e)) continue;
+      const o = otherEnd(e, selected), B = scr(o.x, o.y, o.z);
+      const len = A && B ? Math.hypot(A[0] - B[0], A[1] - B[1]) : 0;
+      if (!A || !B || len < LABEL_MIN_LINK_PX) continue;
+      // far enough along the link to clear the cube on screen, but not past the middle of the link
+      const t = Math.min(0.5, Math.max(0.3, (rpx + 18) / len));
+      put(selected.x + (o.x - selected.x) * t, selected.y + (o.y - selected.y) * t, selected.z + (o.z - selected.z) * t, moveAlong(e, selected), true);
+    }
+  }
+  if (boxesShown() && selDot && !anim) {
+    const S = dotPoint(selDot.code);
+    const focal = h / 2 / Math.tan(gCam.fov * Math.PI / 360);
+    const camDist = S ? Math.hypot(S.x - gCam.position.x, S.y - gCam.position.y, S.z - gCam.position.z) : Infinity;
+    if (S && S.size * focal / camDist >= LABEL_MIN_PX) for (const mvv of activeMoves()) {
+      const n = applyCode(selDot.code, mvv.idx), b = posOfCode(n); if (!b) continue;
+      const vx = b.x - S.x, vy = b.y - S.y, vz = b.z - S.z, l = Math.hypot(vx, vy, vz) || 1, t = S.size * 2.4 / l;
+      put(S.x + vx * t, S.y + vy * t, S.z + vz * t, mvv, true);
+    }
+  }
+  if (labelAll) for (const L of detailLabels) put(L.x, L.y, L.z, L.mv, false);
+  if (labelAll) {
+    for (let j = 0; j < edgeLabelList.length; j++) {
+      const e = edgeLabelList[j];
+      put((e.a.x + e.b.x) / 2, (e.a.y + e.b.y) / 2, (e.a.z + e.b.z) / 2, e.mv, false);
+    }
+  }
+  for (let i = k; i < pool.length; i++) if (!pool[i].hidden) pool[i].hidden = true;
+}
+
+// ---------- markers & route tubes ----------
+const up = new THREE.Vector3(0, 1, 0), tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3();
+function placeMarkers() {
+  const focalPx = (gCanvas.clientHeight || 600) / 2 / Math.tan(gCam.fov * Math.PI / 360);
+  const S = selOn ? (selected || (selDot && dotPoint(selDot.code))) : null;
+  const camD = (o) => Math.hypot(o.x - gCam.position.x, o.y - gCam.position.y, o.z - gCam.position.z);
+  if (S) { selMark.visible = true; selMark.position.set(S.x, S.y, S.z); selMark.scale.setScalar(Math.max(S.size * 1.55, camD(S) * 14 / focalPx)); }
+  else selMark.visible = false;
+  if (hover && hover !== selected) { hovMark.visible = true; hovMark.position.set(hover.x, hover.y, hover.z); hovMark.scale.setScalar(hover.size * 1.35); }
+  else hovMark.visible = false;
+  let k = 0;
+  for (; k < hl.length && k < tubes.length; k++) {
+    const [x, y, m, th] = hl[k], t = tubes[k];
+    tmpA.set(x.x, x.y, x.z); tmpB.set(y.x, y.y, y.z);
+    const len = tmpA.distanceTo(tmpB);
+    t.material = tubeMats[m];
+    t.position.copy(tmpA).add(tmpB).multiplyScalar(0.5);
+    t.quaternion.setFromUnitVectors(up, tmpB.sub(tmpA).normalize());
+    // constant width on screen: about 3 px for a normal route, whatever the zoom
+    const ux = y.x - x.x, uy = y.y - x.y, uz = y.z - x.z, uu = ux * ux + uy * uy + uz * uz || 1;
+    const cpx = gCam.position.x - x.x, cpy = gCam.position.y - x.y, cpz = gCam.position.z - x.z;
+    const tt = Math.max(0, Math.min(1, (cpx * ux + cpy * uy + cpz * uz) / uu));
+    const md = Math.hypot(cpx - ux * tt, cpy - uy * tt, cpz - uz * tt);
+    const th2 = (th / 0.55) * 1.5 * md / focalPx;
+    t.scale.set(th2, len, th2); t.visible = true;
+  }
+  for (; k < tubes.length; k++) if (tubes[k].visible) tubes[k].visible = false;
+}
+
+// ---------- sizing & loop ----------
+function resize() {
+  renderDirty = true; cubeDirty = true;
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (w && h) { gRenderer.setSize(w, h, false); gCam.aspect = w / h; gCam.updateProjectionMatrix(); }
+  const cw = cubebox.clientWidth, ch = cubebox.clientHeight;
+  if (cw && ch) { cRenderer.setSize(cw, ch, false); cCam.aspect = cw / ch; cCam.updateProjectionMatrix(); }
+}
+new ResizeObserver(resize).observe(stage);
+new ResizeObserver(resize).observe(cubebox);
+resize();
+
+// ---------- drawing only when something changes ----------
+// The page redraws only while the camera moves (including its glide after you let go), the layout
+// settles, a layer streams in, the camera flies, the cube turns, or you are using the page. Idle, it
+// draws nothing, so the GPU rests.
+for (const ev of ['pointermove', 'pointerdown', 'pointerup', 'wheel', 'keydown', 'keyup', 'input', 'change', 'click'])
+  window.addEventListener(ev, () => { lastEventAt = performance.now(); }, { capture: true, passive: true });
+const AUTO_SPIN_MS = 25000;
+function frameBody(now) {
+  const moving = alpha > 0.004;
+  if (moving) {
+    tick(alpha); if (nodes.length < 8000) tick(alpha);
+    alpha *= nodes.length < 8000 ? 0.975 : 0.96;
+    if (alpha <= 0.004) settledAt = now;
+  }
+  if (job) {
+    runJob(12, now);
+    if (job.done) { finishJob(now); showBusy(null); }
+    else {
+      jobProgress(now);
+      if (now - job.lastUi > 250) { job.lastUi = now; renderCensus(); renderTotals(); }
+    }
+  } else if (!growing) {
+    if (alpha > 0.004 && nodes.length > 2500) showBusy('Settling layout', Math.min(1, Math.log(alpha0 / alpha) / Math.log(alpha0 / 0.004)));
+    else showBusy(null);
+  }
+  if (moving || now < popUntil) writeGeometry(now);
+  if (autoOn && !growing && !job && alpha < 0.05 && now - settledAt > 700 && now > popUntil + 600) {
+    if (depthShown >= maxDepth()) setAuto(false); else grow();
+  }
+  if (flyWhenDone && !busy()) { flyWhenDone = false; const P = currentPoint(); if (P) flyTo(P); }
+  const hb = $('btnHome'), hbText = busy() ? 'Stop' : 'Solve';
+  if (hb.textContent !== hbText) hb.textContent = hbText;
+  if (flight) {
+    const t = Math.min(1, (now - flight.t0) / flight.dur), k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    gControls.target.lerpVectors(flight.fromT, flight.toT, k);
+    gCam.position.lerpVectors(flight.fromP, flight.toP, k);
+    if (t >= 1) flight = null;
+  }
+  if (fitDist != null) {
+    const off = gCam.position.clone().sub(gControls.target), d = off.length();
+    const nd = d + (fitDist - d) * 0.045;
+    gCam.position.copy(gControls.target).add(off.setLength(nd));
+    if (Math.abs(nd - fitDist) < 0.5) fitDist = null;
+  }
+  if (gControls.autoRotate && now > AUTO_SPIN_MS) gControls.autoRotate = false;
+  const camMoved = gControls.update();
+  updateDetail(now);
+  updateEdgeLabels(now);
+  updateHover();
+  const recent = now - lastEventAt < 600;
+  if (camMoved || moving || job || growing || now < popUntil + 100 || flight || fitDist != null || anim || queue.length || recent || renderDirty) {
+    placeMarkers();
+    gRenderer.render(gScene, gCam);
+    placeLabels();
+    renderDirty = false;
+  }
+  stepCube(now);
+  const cubeMoved = cControls.update();
+  if (cubeMoved || anim || cubeDirty || recent) { cRenderer.render(cScene, cCam); cubeDirty = false; }
+}
+// keep drawing even if one frame fails, so nothing (a label, a marker) can get stuck on screen
+function frame(now) {
+  try { frameBody(now); } catch (err) { console.error('frame failed', err); renderDirty = true; }
+  requestAnimationFrame(frame);
+}
+
+applyView();
+startOver();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
