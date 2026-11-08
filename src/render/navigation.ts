@@ -13,14 +13,36 @@ export interface Flyable extends Point { size?: number; dot?: boolean; dotIdx?: 
 /** Eases the camera to the distance that shows everything up to layer `depth`. */
 export function fitTo(x: Explorer, depth: number): void { x.cam.fitDist = fitDistance(x.radii, depth); }
 
+/** How far from t the camera stops: close enough to see the cube, more room for a dot. */
+const flyDistance = (t: Flyable): number => t.dot || t.dotIdx != null ? 70 : Math.max(18, (t.size || 2) * 14);
+
 /** Flies the camera close to t (keeping the viewing direction). */
 export function flyTo(x: Explorer, t: Flyable, dur?: number): void {
   const { cam, controls } = x.gs;
   x.cam.fitDist = null; controls.autoRotate = false;
   const to = new THREE.Vector3(t.x, t.y, t.z);
   const dir = cam.position.clone().sub(controls.target).normalize();
-  const dist = t.dot || t.dotIdx != null ? 70 : Math.max(18, (t.size || 2) * 14);
+  const dist = flyDistance(t);
   x.cam.flight = { t0: performance.now(), dur: x.reducedMotion ? 1 : (dur || 900), fromT: controls.target.clone(), toT: to, fromP: cam.position.clone(), toP: to.clone().add(dir.multiplyScalar(dist)) };
+}
+
+/**
+ * Flies the camera to t on a walk toward `ahead`: behind t, looking at t over its shoulder, and a little
+ * below the way ahead, so the way ahead runs down the screen beyond t: the walk feels like a descent.
+ */
+export function chaseTo(x: Explorer, t: Flyable, ahead: THREE.Vector3, dur?: number): void {
+  const { cam, controls } = x.gs;
+  const to = new THREE.Vector3(t.x, t.y, t.z), fwd = ahead.clone().sub(to);
+  if (fwd.lengthSq() < 1e-6) { flyTo(x, t, dur); return; }
+  fwd.normalize();
+  // "above" is world up made square to the way ahead; any square direction when heading straight up or down
+  const side = fwd.clone().cross(cam.up);
+  if (side.lengthSq() < 1e-4) side.set(1, 0, 0).cross(fwd);
+  const above = side.normalize().cross(fwd);
+  const dist = flyDistance(t) * 1.15, tilt = -0.5; // about 29 degrees below the way ahead
+  x.cam.fitDist = null; controls.autoRotate = false;
+  const off = fwd.multiplyScalar(-Math.cos(tilt)).addScaledVector(above, Math.sin(tilt)).multiplyScalar(dist);
+  x.cam.flight = { t0: performance.now(), dur: x.reducedMotion ? 1 : (dur || 900), fromT: controls.target.clone(), toT: to, fromP: cam.position.clone(), toP: to.clone().add(off) };
 }
 
 const sph = new THREE.Spherical();
@@ -132,13 +154,20 @@ export function bindNavigation(x: Explorer, opts: NavigationOptions): void {
   }, { passive: false, capture: true });
 }
 
+const fromOff = new THREE.Vector3(), toOff = new THREE.Vector3(), turn = new THREE.Quaternion(), turnK = new THREE.Quaternion();
 /** Advances a flight and the fit-to-graph easing; called every frame. */
 export function stepCamera(x: Explorer, now: number): void {
   const { cam, controls } = x.gs, f = x.cam.flight;
   if (f) {
     const t = Math.min(1, (now - f.t0) / f.dur), k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // the point looked at moves in a straight line; the camera swings around it, turning its viewing
+    // direction and easing its distance, so a flight that turns the view never cuts through the target
     controls.target.lerpVectors(f.fromT, f.toT, k);
-    cam.position.lerpVectors(f.fromP, f.toP, k);
+    fromOff.subVectors(f.fromP, f.fromT); toOff.subVectors(f.toP, f.toT);
+    const d0 = fromOff.length(), d1 = toOff.length();
+    turn.setFromUnitVectors(fromOff.normalize(), toOff.normalize());
+    turnK.identity().slerp(turn, k);
+    cam.position.copy(fromOff.applyQuaternion(turnK).multiplyScalar(d0 + (d1 - d0) * k)).add(controls.target);
     if (t >= 1) x.cam.flight = null;
   }
   if (x.cam.fitDist != null) {
