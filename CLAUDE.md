@@ -112,6 +112,12 @@ import each other freely (only functions, nothing runs at import time).
   recent input inside the explorer (600 ms) or `x.renderDirty`. Set `x.renderDirty = true` when
   changing anything visible without user input. The automatic spin stops 25 s after start.
 - Route tubes and the selection box keep a constant size on screen (scaled by camera distance).
+- Solve with the camera following: first a flight to the selected state, then each step seen from
+  behind (`chaseTo` in `render/navigation.ts`), heading mostly toward the solved cube and a little
+  toward the next state, the camera slightly below the way ahead so it runs down the screen (the walk
+  reads as a descent; from above it read as a climb). Cubes in front of the camera dissolve
+  (`uFade` in the cube shader) until anything else moves the camera (`x.cam.holdFade`). Flights
+  swing the camera around the target, so turning the view never cuts through it.
 - Embedding: all DOM lookups go through the container; window-level key listeners act only for keys
   inside the explorer or with the pointer over it (`keyboard: 'explorer'`), and read the real target
   with `composedPath()` (shadow DOM retargets `e.target`). `@font-face` does not work in a shadow
