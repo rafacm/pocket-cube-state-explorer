@@ -86,6 +86,7 @@ function frameBody(x: Explorer, now: number, startedAt: number): void {
   stepCube(x, now);
   const cubeMoved = c.controls.update() as unknown as boolean;
   if (cubeMoved || c.anim || x.cubeDirty || recent) { c.renderer.render(c.scene, c.cam); x.cubeDirty = false; }
+  x.probe?.(now);
 }
 
 /** Starts the frame loop. It keeps drawing even if one frame fails, so nothing (a label, a marker) can get stuck on screen. */

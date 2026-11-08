@@ -147,6 +147,8 @@ export interface Explorer {
   fullDistHalf: boolean | null;
 
   frameId: number;
+  /** called at the end of every frame by measuring scripts (scripts/measure.ts); null otherwise */
+  probe: ((now: number) => void) | null;
   destroyed: boolean;
   /** undoes listeners and observers on destroy() */
   cleanup: (() => void)[];

@@ -45,6 +45,11 @@ export interface ExplorerOptions {
   toolsOpen?: boolean;
   /** Show the explorer's own title (default true; an embed in a page with its own title can hide it). */
   header?: boolean;
+  /**
+   * For measuring scripts (scripts/measure.ts): puts the explorer's internal state on the container as
+   * `pcseProbe`, read-only by convention. The standalone page turns it on with `?probe` in its URL.
+   */
+  probe?: boolean;
 }
 
 export interface ExplorerHandle {
@@ -134,9 +139,14 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
     detail: createDetail(gs.scene, gs.nodeMat),
     labels: createLabels(),
     fullDist: null, fullDistHalf: null,
-    frameId: 0, destroyed: false, cleanup: [],
+    frameId: 0, probe: null, destroyed: false, cleanup: [],
   };
   paintCube(x, x.cube.key);
+  if (options.probe) {
+    const c = container as HTMLElement & { pcseProbe?: Explorer };
+    c.pcseProbe = x;
+    x.cleanup.push(() => { delete c.pcseProbe; });
+  }
 
   bindNavigation(x, { keyboard: options.keyboard ?? 'explorer' });
   bindKeyboard(x, { keyboard: options.keyboard ?? 'explorer' });
