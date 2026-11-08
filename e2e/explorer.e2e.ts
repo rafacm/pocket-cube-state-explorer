@@ -64,6 +64,22 @@ test('finds a scramble, shows it in the card, then solves it', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test('Solve with the camera following flies to the state before the first turn', async ({ page }) => {
+  const errors = await open(page);
+  await growTo(page, 2);
+  await find(page, 'R U');
+  await page.locator('#btnToolsClose').click();
+  await expect(page.locator('#cbDepth')).toHaveText('2');
+  await page.locator('#btnHome').click();
+  // the approach takes 1.8 s at normal speed: the cube waits for it, then walks home
+  await expect(page.locator('#btnHome')).toHaveText('Stop');
+  await page.waitForTimeout(1000);
+  await expect(page.locator('#cbDepth')).toHaveText('2');
+  await expect(page.locator('#cbDepth')).toHaveText('0', { timeout: 60_000 });
+  await expect(page.locator('#flHeld')).toHaveText(SOLVED_FACELETS);
+  expect(errors).toEqual([]);
+});
+
 test('finds a facelet string beyond the drawn layers', async ({ page }) => {
   const errors = await open(page);
   // nothing beyond the solved cube is drawn yet, so this state is outside the graph

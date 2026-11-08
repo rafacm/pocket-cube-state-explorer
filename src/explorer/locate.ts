@@ -1,5 +1,5 @@
 // Where a state is drawn (cube-layer node or dot), and routes to states outside the drawn graph.
-import { NSTATE, type Move } from '../model';
+import { NSTATE, canonical, encodeKey, type Key, type Move } from '../model';
 import type { GNode } from '../graph/graph';
 import { computeDistances, routeTo } from '../graph/distances';
 import { activeMoves, fmt } from './settings';
@@ -23,6 +23,12 @@ export function dotPoint(x: Explorer, code: number): GNode | DotPoint | null {
   if (i <= -2) return x.graph.nodes[-2 - i];
   if (i >= 0) return { x: D.pos[i * 3], y: D.pos[i * 3 + 1], z: D.pos[i * 3 + 2], size: cubeSizeOf(), dot: true };
   return null;
+}
+
+/** Where a state (as held, any orientation) is drawn, if anywhere. */
+export function pointOfKey(x: Explorer, key: Key): GNode | DotPoint | null {
+  const ck = canonical(key).key;
+  return x.graph.byKey.get(ck) || (x.dots && dotPoint(x, encodeKey(ck))) || null;
 }
 
 /** Where the current state is drawn, if anywhere. */

@@ -7,8 +7,8 @@ import { currentPoint, dotPoint, posOfCode, routeInGraph } from './locate';
 import { routeTo } from '../graph/distances';
 import { activeMoves } from './settings';
 import { busy } from '../cube/live-cube';
-import { walkFly } from '../cube/walks';
-import { flyTo } from '../render/navigation';
+import { homeHeading, walkFly } from '../cube/walks';
+import { chaseTo, flyTo } from '../render/navigation';
 import { renderNet, renderOrientation } from '../ui/net';
 import { renderRoutes } from '../ui/routes';
 import { updateCard } from '../ui/controls';
@@ -37,8 +37,13 @@ export function onState(x: Explorer): void {
   el.cbDepth.textContent = String(s.node ? s.node.depth : s.dot ? s.dot.depth : s.free ? s.free.depth : '>' + x.graph.depthShown);
   const dep = s.node ? s.node.depth : s.dot ? s.dot.depth : s.free ? s.free.depth : 0;
   el.btnPlay.disabled = dep <= 0;
-  // follow the cube: after every turn, fly to the state it is in now
-  if (el.optFollow.checked && (busy(x) || x.cube.anim)) { const P = currentPoint(x); if (P) flyTo(x, P, walkFly(x) * 0.95); }
+  // follow the cube: after every turn, fly to the state it is in now; on Solve's walk from behind,
+  // facing the way home
+  if (el.optFollow.checked && (busy(x) || x.cube.anim)) {
+    const P = currentPoint(x), ahead = P && homeHeading(x);
+    if (P && ahead) chaseTo(x, P, ahead, walkFly(x) * 0.95);
+    else if (P) flyTo(x, P, walkFly(x) * 0.95);
+  }
   computeHighlight(x);
   renderRoutes(x);
   updateCard(x);
