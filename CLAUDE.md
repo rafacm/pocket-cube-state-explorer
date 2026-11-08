@@ -14,6 +14,12 @@ description.
   `bun run e2e` (Playwright in `e2e/`: builds, serves with `vite preview`, drives headless Chromium).
 - `bun run screenshots [scene ...]`: renders `docs/screenshots/*.png` and `site/public/og.jpg` (the
   link-preview image) from `dist/`. Scenes are listed in `scripts/screenshots.ts`.
+- `bun run measure [--headed] [--browser webkit] [--json out.json] ...`: measures Solve's walk (frame
+  times per phase, and a descent score: way ahead down the screen, camera nearer the solved cube,
+  solved cube in view, steady view). It opens the page with `?probe`, which exposes the `Explorer` as
+  `#app.pcseProbe`, and records in `x.probe`, called at the end of every frame. Run it before and
+  after camera or rendering changes. Scores so far (software WebGL, distance 5): Solve before the
+  chase camera 58, with it 78–79.
 - CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, build and e2e on pushes to main and PRs.
 
 ## Working with the owner

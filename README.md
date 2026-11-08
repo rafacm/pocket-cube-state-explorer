@@ -119,7 +119,15 @@ bun run typecheck    # TypeScript, strict
 bun run test         # unit tests: the cube model, the graph, distances of all 3,674,160 states
 bun run e2e          # end-to-end tests in headless Chromium (Playwright)
 bun run screenshots  # regenerates docs/screenshots/ and site/public/og.jpg (the link-preview image)
+bun run measure      # measures Solve's walk: frame rate, and how much it reads as a descent
 ```
+
+`bun run measure` adds layers, presses Solve on a scramble with the camera following, and records
+every frame: frames per second for the approach, the turns and the flights between them, and a descent
+score out of 100 (does the way ahead run down the screen, does the camera get nearer the solved cube,
+is the solved cube in view, does the view turn calmly). Options are listed at the top of
+`scripts/measure.ts`, e.g. `--headed` to draw with the GPU, `--browser webkit` for Safari's engine,
+and `--json` to keep the results and compare runs. On a machine without a GPU the frame rates say little.
 
 The end-to-end tests and screenshots need Playwright's Chromium (`bunx playwright install --with-deps
 chromium`). They render with software WebGL, so no GPU is needed, but large dot layers take a while.

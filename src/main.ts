@@ -12,6 +12,7 @@ try { const v = localStorage.getItem(KEY); if (THEME_MODES.includes(v as ThemeMo
 createExplorer(document.getElementById('app')!, {
   keyboard: 'page',
   theme: saved,
+  probe: new URLSearchParams(location.search).has('probe'), // for scripts/measure.ts
   onThemeChange(mode, scheme) {
     document.documentElement.dataset.theme = scheme; // the page behind the explorer follows it (page.css)
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', scheme === 'dark' ? '#12151B' : '#F6F4EF');

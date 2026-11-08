@@ -24,6 +24,7 @@
     "test": "bun test tests",
     "typecheck": "tsc",
     "e2e": "playwright test",
-    "screenshots": "bun run build && bun scripts/screenshots.ts"
+    "screenshots": "bun run build && bun scripts/screenshots.ts",
+    "measure": "bun run build && bun scripts/measure.ts"
   }
 }
