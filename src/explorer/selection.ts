@@ -42,7 +42,7 @@ export function onState(x: Explorer): void {
   if (el.optFollow.checked && (busy(x) || x.cube.anim)) {
     const P = currentPoint(x), ahead = P && homeHeading(x);
     if (P && ahead) chaseTo(x, P, ahead, walkFly(x) * 0.95);
-    else if (P) flyTo(x, P, walkFly(x) * 0.95);
+    else if (P) flyTo(x, P, walkFly(x) * 0.95, true);
   }
   computeHighlight(x);
   renderRoutes(x);

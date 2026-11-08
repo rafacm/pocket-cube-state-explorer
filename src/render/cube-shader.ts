@@ -11,7 +11,7 @@ import type { Theme } from '../explorer/theme';
 const nodeVS = `
 attribute vec4 aStick;
 uniform vec3 uPal[6];
-varying vec2 vUV; varying float vShade;
+varying vec2 vUV; varying float vShade; varying float vDepth;
 varying vec3 vC0; varying vec3 vC1; varying vec3 vC2; varying vec3 vC3;
 vec3 pal(float c) {
   if (c < 0.5) return uPal[0]; if (c < 1.5) return uPal[1]; if (c < 2.5) return uPal[2];
@@ -39,13 +39,20 @@ void main() {
   #ifdef USE_INSTANCING
     p = instanceMatrix * p;
   #endif
-  gl_Position = projectionMatrix * modelViewMatrix * p;
+  vec4 mv = modelViewMatrix * p;
+  vDepth = -mv.z;
+  gl_Position = projectionMatrix * mv;
 }`;
+// uFade > 0: cubes nearer the camera than uFade dissolve (a 2 x 2 dither), gone at 0.6 uFade
 const nodeFS = `
-uniform vec3 uBody;
-varying vec2 vUV; varying float vShade;
+uniform vec3 uBody; uniform float uFade;
+varying vec2 vUV; varying float vShade; varying float vDepth;
 varying vec3 vC0; varying vec3 vC1; varying vec3 vC2; varying vec3 vC3;
 void main() {
+  if (uFade > 0.0) {
+    vec2 d = mod(floor(gl_FragCoord.xy), 2.0);
+    if (smoothstep(0.6 * uFade, uFade, vDepth) < (d.x + 2.0 * d.y) * 0.25 + 0.125) discard;
+  }
   vec3 col = vUV.x > 0.0 ? (vUV.y > 0.0 ? vC3 : vC2) : (vUV.y > 0.0 ? vC1 : vC0);
   vec2 q = abs(vUV); float g = 0.045;
   float edge = step(q.x, g) + step(q.y, g) + step(0.5 - g, q.x) + step(0.5 - g, q.y);
@@ -54,7 +61,7 @@ void main() {
 
 export function createCubeMaterial(theme: Theme): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-    uniforms: { uPal: { value: theme.sticker }, uBody: { value: theme.cubeBody } },
+    uniforms: { uPal: { value: theme.sticker }, uBody: { value: theme.cubeBody }, uFade: { value: 0 } },
     vertexShader: nodeVS, fragmentShader: nodeFS,
   });
 }

@@ -55,6 +55,10 @@ export interface CameraState {
   flight: Flight | null;
   /** fly to the current state once the cube has finished moving */
   flyWhenDone: boolean;
+  /** cubes nearer the camera than this fade out, so they don't block the view on Solve's walk; 0 when off */
+  fade: number;
+  /** Solve's walk set the view: keep the near cubes faded until anything else moves the camera */
+  holdFade: boolean;
   spaceDown: boolean;
   overStage: boolean;
 }

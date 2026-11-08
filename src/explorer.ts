@@ -125,7 +125,7 @@ function mount(container: HTMLElement, options: ExplorerOptions, restart: () => 
     renderDirty: true, cubeDirty: true, lastEventAt: 0,
     rng: new Rng(), radii, graph: createGraph(), gs, cube: createLiveCube(el.cube, theme),
     sel: { on: true, node: null, dot: null, free: null, loop: null, highlight: [], boxKey: null, keepBox: false, boxOn: false },
-    cam: { fitDist: null, flight: null, flyWhenDone: false, spaceDown: false, overStage: false },
+    cam: { fitDist: null, flight: null, flyWhenDone: false, fade: 0, holdFade: false, spaceDown: false, overStage: false },
     pointer: { hover: null, inside: false, mx: 0, my: 0, downX: 0, downY: 0, needPick: false },
     growth: { growing: false, auto: false, settledAt: 0, busyShown: '', maxLayers: Math.max(1, Math.round(options.maxLayers ?? 99)), agreed: new Set(), outOfMemory: false },
     ui: { cardWanted: false, cardCollapsed: false, coachDismissed: false, toolsOpen: false, tab: 'find', frameMs: 0, slowSince: 0, slowAsked: false, headsYes: null },

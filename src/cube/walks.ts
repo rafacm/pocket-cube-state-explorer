@@ -82,7 +82,7 @@ function walkHome(x: Explorer, moves: readonly Move[]): void {
   pushReorient(x);
   pushWalk(x, moves, true);
   const P = currentPoint(x), ahead = x.el.optFollow.checked && P ? homeHeading(x) : null;
-  if (P && ahead) { chaseTo(x, P, ahead, approachFly(x)); x.cube.queue.unshift({ wait: x.reducedMotion ? 1 : approachFly(x) }); }
+  if (P && ahead) { chaseTo(x, P, ahead, approachFly(x)); x.cube.queue.unshift({ wait: x.reducedMotion ? 1 : approachFly(x) }); x.cam.holdFade = true; }
 }
 
 /** Solve: play a shortest route back to solved (from any state), turn by turn. */
@@ -113,7 +113,7 @@ export function walkLoop(x: Explorer): void {
   const A = rs[0], B = rs[1];
   let k = 0; while (A[k] === B[k]) k++;
   x.sel.loop = { A, B, k, n: sel, len: 2 * (A.length - k) };
-  forgetTurns(x);
+  forgetTurns(x); x.cam.holdFade = false;
   pushReorient(x);
   const back: Move[] = []; for (let i = B.length - 1; i >= k; i--) back.push(moveAlong(edgeBetween(B[i], B[i - 1])!, B[i]));
   pushWalk(x, back);
@@ -125,7 +125,7 @@ export function walkLoop(x: Explorer): void {
 
 /** Select a state: the cube jumps there at once; Solve or Play from solved then walk the route. */
 export function jumpTo(x: Explorer, key: Key): void {
-  x.cube.queue.length = 0; clearLoop(x); x.cam.flyWhenDone = false; forgetTurns(x);
+  x.cube.queue.length = 0; clearLoop(x); x.cam.flyWhenDone = false; x.cam.holdFade = false; forgetTurns(x);
   x.cube.queue.push({ set: key });
 }
 
@@ -138,7 +138,7 @@ export function playFromSolved(x: Explorer): void {
   else if (s.dot) route = s.dot.route;
   else if (s.free) route = s.free.route;
   if (!route || !route.length) return;
-  clearLoop(x); forgetTurns(x);
+  clearLoop(x); forgetTurns(x); x.cam.holdFade = false;
   x.cube.queue.push({ set: SOLVED }, { wait: 300 });
   pushWalk(x, route);
   for (let i = c.seq.length - 1; i >= 0; i--) {

@@ -11,15 +11,16 @@ import { closeTopmost } from '../ui/controls';
 export interface Flyable extends Point { size?: number; dot?: boolean; dotIdx?: number }
 
 /** Eases the camera to the distance that shows everything up to layer `depth`. */
-export function fitTo(x: Explorer, depth: number): void { x.cam.fitDist = fitDistance(x.radii, depth); }
+export function fitTo(x: Explorer, depth: number): void { x.cam.holdFade = false; x.cam.fitDist = fitDistance(x.radii, depth); }
 
 /** How far from t the camera stops: close enough to see the cube, more room for a dot. */
 const flyDistance = (t: Flyable): number => t.dot || t.dotIdx != null ? 70 : Math.max(18, (t.size || 2) * 14);
 
-/** Flies the camera close to t (keeping the viewing direction). */
-export function flyTo(x: Explorer, t: Flyable, dur?: number): void {
+/** Flies the camera close to t (keeping the viewing direction). `walk`: a step of a walk the camera follows. */
+export function flyTo(x: Explorer, t: Flyable, dur?: number, walk = false): void {
   const { cam, controls } = x.gs;
   x.cam.fitDist = null; controls.autoRotate = false;
+  if (!walk) x.cam.holdFade = false;
   const to = new THREE.Vector3(t.x, t.y, t.z);
   const dir = cam.position.clone().sub(controls.target).normalize();
   const dist = flyDistance(t);
@@ -33,7 +34,7 @@ export function flyTo(x: Explorer, t: Flyable, dur?: number): void {
 export function chaseTo(x: Explorer, t: Flyable, ahead: THREE.Vector3, dur?: number): void {
   const { cam, controls } = x.gs;
   const to = new THREE.Vector3(t.x, t.y, t.z), fwd = ahead.clone().sub(to);
-  if (fwd.lengthSq() < 1e-6) { flyTo(x, t, dur); return; }
+  if (fwd.lengthSq() < 1e-6) { flyTo(x, t, dur, true); return; }
   fwd.normalize();
   // "above" is world up made square to the way ahead; any square direction when heading straight up or down
   const side = fwd.clone().cross(cam.up);
@@ -50,6 +51,7 @@ const sph = new THREE.Spherical();
 export function orbitBy(x: Explorer, dTheta: number, dPhi: number): void {
   const { cam, controls } = x.gs;
   x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false;
+  x.cam.holdFade = false;
   const off = cam.position.clone().sub(controls.target);
   sph.setFromVector3(off);
   sph.theta += dTheta; sph.phi = Math.min(Math.PI - 0.05, Math.max(0.05, sph.phi + dPhi));
@@ -60,7 +62,7 @@ export function orbitBy(x: Explorer, dTheta: number, dPhi: number): void {
 /** Moves the camera toward (k < 1) or away from (k > 1) the point it looks at. */
 export function zoomBy(x: Explorer, k: number): void {
   const { cam, controls } = x.gs;
-  x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false;
+  x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false; x.cam.holdFade = false;
   const off = cam.position.clone().sub(controls.target);
   off.setLength(Math.min(controls.maxDistance, Math.max(controls.minDistance, off.length() * k)));
   cam.position.copy(controls.target).add(off);
@@ -70,6 +72,7 @@ export function zoomBy(x: Explorer, k: number): void {
 /** Flies back out to the whole graph. */
 export function flyHome(x: Explorer): void {
   const { cam, controls } = x.gs;
+  x.cam.holdFade = false;
   x.cam.flight = {
     t0: performance.now(), dur: x.reducedMotion ? 1 : 900, fromT: controls.target.clone(), toT: new THREE.Vector3(0, 0, 0), fromP: cam.position.clone(),
     toP: cam.position.clone().sub(controls.target).normalize().multiplyScalar(fitDistance(x.radii, x.graph.depthShown)),
@@ -102,7 +105,7 @@ export function bindNavigation(x: Explorer, opts: NavigationOptions): void {
   const panMode = (on: boolean) => { x.cam.spaceDown = on; controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE; setPanCursor(on); };
   const ours = (e: Event) => ownsKey(x, e, opts);
 
-  listen(x, controls, 'start', () => { x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false; });
+  listen(x, controls, 'start', () => { x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false; x.cam.holdFade = false; });
   listen(x, canvas, 'pointerenter', () => { x.cam.overStage = true; });
   listen(x, canvas, 'pointerleave', () => { x.cam.overStage = false; });
   listen(x, window, 'keydown', (e: KeyboardEvent) => {
@@ -131,7 +134,7 @@ export function bindNavigation(x: Explorer, opts: NavigationOptions): void {
   listen(x, canvas, 'wheel', (e: WheelEvent) => {
     e.preventDefault();
     controls.enableZoom = false;
-    x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false;
+    x.cam.fitDist = null; x.cam.flight = null; controls.autoRotate = false; x.cam.holdFade = false;
     const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
     const k = Math.exp(Math.max(-60, Math.min(60, dy)) * (e.ctrlKey ? 0.012 : 0.0018));   // ctrl + wheel is a trackpad pinch
     const r = canvas.getBoundingClientRect(), w = r.width, h = r.height;
