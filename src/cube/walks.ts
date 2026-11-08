@@ -1,12 +1,14 @@
 // What the live cube plays: single turns from the pad, Solve, Play from solved and Walk the loop.
 // Walk timing: with the camera following, each step is: turn the cube, then fly to the new state,
 // then the next turn. The speed slider scales both.
-import { ROT_MOVES, SOLVED, canonical, encodeKey, ensureTables, inverseOf, invertMove, type Key, type Move } from '../model';
+import * as THREE from 'three';
+import { ROT_MOVES, SOLVED, applyMove, canonical, encodeKey, ensureTables, inverseOf, invertMove, type Key, type Move } from '../model';
 import { edgeBetween, moveAlong } from '../graph/graph';
 import { routeMoves, routes } from '../graph/routes';
 import type { Explorer } from '../explorer/types';
 import { clearLoop, computeHighlight } from '../explorer/selection';
-import { routeFromSolved } from '../explorer/locate';
+import { currentPoint, pointOfKey, routeFromSolved } from '../explorer/locate';
+import { chaseTo } from '../render/navigation';
 import { renderRoutes } from '../ui/routes';
 import { busy } from './live-cube';
 
@@ -15,6 +17,8 @@ function speedF(x: Explorer): number { return (SPEEDS[+x.el.optSpeed.value] || S
 function walkTurn(x: Explorer): number { return (x.el.optFollow.checked ? 900 : 450) * speedF(x); }
 /** How long the camera takes to fly to the next state of a walk. */
 export function walkFly(x: Explorer): number { return 1200 * speedF(x); }
+/** How long the camera takes to fly to the selected state before Solve's first turn. */
+function approachFly(x: Explorer): number { return 1800 * speedF(x); }
 
 /** A turn by hand (the pad or a key), as held; it can be undone. */
 export function queueMove(x: Explorer, mv: Move): void {
@@ -45,9 +49,40 @@ export function queueGraphMove(x: Explorer, mv: Move): void { if (busy(x)) retur
 export function normalize(x: Explorer): void { if (busy(x)) return; clearLoop(x); forgetTurns(x); pushReorient(x); }
 
 // queue a walk: one turn per step, and when the camera follows, a pause for its flight after each turn
-function pushWalk(x: Explorer, moves: readonly Move[]): void {
+function pushWalk(x: Explorer, moves: readonly Move[], home = false): void {
   const follow = x.el.optFollow.checked;
-  moves.forEach(m => { x.cube.queue.push({ mv: m, dur: walkTurn(x) }); if (follow) x.cube.queue.push({ wait: walkFly(x) }); });
+  moves.forEach(m => { x.cube.queue.push({ mv: m, dur: walkTurn(x), home }); if (follow) x.cube.queue.push({ wait: walkFly(x) }); });
+}
+
+/**
+ * Where Solve's walk heads from the state the cube will be in after the queued turns before it: mostly
+ * toward the solved cube, partly toward the next state, so the camera keeps a steady course and does not
+ * swing with every zigzag of the route. Null when no turn of Solve's walk is left.
+ */
+export function homeHeading(x: Explorer): THREE.Vector3 | null {
+  let key = x.cube.key;
+  for (const item of x.cube.queue) {
+    if (!('mv' in item)) continue;
+    key = applyMove(key, item.mv);
+    if (!item.home) continue;
+    const P = currentPoint(x), N = pointOfKey(x, key), S = x.graph.nodes[0];
+    if (!P) return null;
+    const toSolved = new THREE.Vector3(S.x - P.x, S.y - P.y, S.z - P.z);
+    if (toSolved.lengthSq() < 1e-6) return null;
+    const dir = toSolved.normalize().multiplyScalar(0.65);
+    if (N) { const toNext = new THREE.Vector3(N.x - P.x, N.y - P.y, N.z - P.z); if (toNext.lengthSq() > 1e-6) dir.addScaledVector(toNext.normalize(), 0.35); }
+    return dir.add(new THREE.Vector3(P.x, P.y, P.z));
+  }
+  return null;
+}
+
+// Solve's walk: when the camera follows and the cube is drawn, first fly to it, facing the way home,
+// then start turning
+function walkHome(x: Explorer, moves: readonly Move[]): void {
+  pushReorient(x);
+  pushWalk(x, moves, true);
+  const P = currentPoint(x), ahead = x.el.optFollow.checked && P ? homeHeading(x) : null;
+  if (P && ahead) { chaseTo(x, P, ahead, approachFly(x)); x.cube.queue.unshift({ wait: x.reducedMotion ? 1 : approachFly(x) }); x.cam.holdFade = true; }
 }
 
 /** Solve: play a shortest route back to solved (from any state), turn by turn. */
@@ -56,16 +91,14 @@ export function goHome(x: Explorer): void {
   clearLoop(x); forgetTurns(x);
   const ck = canonical(x.cube.key).key, cur = x.graph.byKey.get(ck);
   if (cur) {
-    pushReorient(x);
     const mv: Move[] = []; for (let n = cur; n.parent; n = n.parent) mv.push(inverseOf(n.via!));
-    pushWalk(x, mv);
+    walkHome(x, mv);
     return;
   }
   ensureTables();
   routeFromSolved(x, encodeKey(ck), route => {
     if (busy(x)) return;
-    pushReorient(x);
-    pushWalk(x, route.slice().reverse().map(m => inverseOf(m)));
+    walkHome(x, route.slice().reverse().map(m => inverseOf(m)));
   });
 }
 
@@ -80,7 +113,7 @@ export function walkLoop(x: Explorer): void {
   const A = rs[0], B = rs[1];
   let k = 0; while (A[k] === B[k]) k++;
   x.sel.loop = { A, B, k, n: sel, len: 2 * (A.length - k) };
-  forgetTurns(x);
+  forgetTurns(x); x.cam.holdFade = false;
   pushReorient(x);
   const back: Move[] = []; for (let i = B.length - 1; i >= k; i--) back.push(moveAlong(edgeBetween(B[i], B[i - 1])!, B[i]));
   pushWalk(x, back);
@@ -92,7 +125,7 @@ export function walkLoop(x: Explorer): void {
 
 /** Select a state: the cube jumps there at once; Solve or Play from solved then walk the route. */
 export function jumpTo(x: Explorer, key: Key): void {
-  x.cube.queue.length = 0; clearLoop(x); x.cam.flyWhenDone = false; forgetTurns(x);
+  x.cube.queue.length = 0; clearLoop(x); x.cam.flyWhenDone = false; x.cam.holdFade = false; forgetTurns(x);
   x.cube.queue.push({ set: key });
 }
 
@@ -105,7 +138,7 @@ export function playFromSolved(x: Explorer): void {
   else if (s.dot) route = s.dot.route;
   else if (s.free) route = s.free.route;
   if (!route || !route.length) return;
-  clearLoop(x); forgetTurns(x);
+  clearLoop(x); forgetTurns(x); x.cam.holdFade = false;
   x.cube.queue.push({ set: SOLVED }, { wait: 300 });
   pushWalk(x, route);
   for (let i = c.seq.length - 1; i >= 0; i--) {

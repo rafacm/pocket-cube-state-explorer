@@ -6,9 +6,9 @@ import type { Theme } from '../explorer/theme';
 import type { Explorer } from '../explorer/types';
 import { onState } from '../explorer/selection';
 
-/** A queued step: a turn, a jump straight to a state, or a pause. */
-export type QueueItem = { mv: Move; dur: number } | { set: Key } | { wait: number };
-type Turning = { kind: 'turn'; item: { mv: Move; dur: number }; pivot: THREE.Group; layer: Cubie[]; t0: number; dur: number };
+/** A queued step: a turn (`home` on the turns of Solve's walk), a jump straight to a state, or a pause. */
+export type QueueItem = { mv: Move; dur: number; home?: boolean } | { set: Key } | { wait: number };
+type Turning = { kind: 'turn'; item: { mv: Move; dur: number; home?: boolean }; pivot: THREE.Group; layer: Cubie[]; t0: number; dur: number };
 type Waiting = { kind: 'wait'; t0: number; dur: number };
 interface Cubie { p: Vec3; g: THREE.Group }
 

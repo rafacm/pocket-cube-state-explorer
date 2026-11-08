@@ -50,7 +50,7 @@ export function updateEdgeLabels(x: Explorer, now: number): void {
     if (boxes && sel && (ed.a === sel || ed.b === sel)) continue;
     const A = ed.a, B = ed.b;
     const wa = e[3] * A.x + e[7] * A.y + e[11] * A.z + e[15], wb = e[3] * B.x + e[7] * B.y + e[11] * B.z + e[15];
-    if (wa <= 0.5 || wb <= 0.5) continue;
+    if (wa <= 0.5 || wb <= 0.5 || wa < x.cam.fade || wb < x.cam.fade) continue; // behind the camera, or faded out
     const ax = (e[0] * A.x + e[4] * A.y + e[8] * A.z + e[12]) / wa, ay = (e[1] * A.x + e[5] * A.y + e[9] * A.z + e[13]) / wa;
     const bx = (e[0] * B.x + e[4] * B.y + e[8] * B.z + e[12]) / wb, by = (e[1] * B.x + e[5] * B.y + e[9] * B.z + e[13]) / wb;
     const mxn = (ax + bx) / 2, myn = (ay + by) / 2; if (mxn < -1 || mxn > 1 || myn < -1 || myn > 1) continue;

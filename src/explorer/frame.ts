@@ -31,6 +31,20 @@ function watchFrames(x: Explorer, now: number, dt: number): void {
   else if (now - u.slowSince > SLOW_FOR_MS && x.el.heads.hidden) { u.slowAsked = true; x.el.slowTip.hidden = false; }
 }
 
+/**
+ * On Solve's walk with the camera following, cubes between the camera and the state it looks at fade
+ * out, so the view down the route stays clear. They fade back in when anything else moves the camera
+ * (x.cam.holdFade).
+ */
+function stepFade(x: Explorer): void {
+  const { cam, controls } = x.gs;
+  const want = x.cam.holdFade ? cam.position.distanceTo(controls.target) * 0.75 : 0;
+  let f = x.cam.fade + (want - x.cam.fade) * 0.08;
+  if (Math.abs(want - f) < 0.05) f = want;
+  if (f === x.cam.fade) return;
+  x.cam.fade = f; x.gs.nodeMat.uniforms.uFade.value = f; x.renderDirty = true;
+}
+
 function frameBody(x: Explorer, now: number, startedAt: number): void {
   const g = x.graph, gs = x.gs;
   const moving = g.alpha > 0.004;
@@ -56,6 +70,7 @@ function frameBody(x: Explorer, now: number, startedAt: number): void {
   stepAuto(x, now);
   stepPanel(x);
   stepCamera(x, now);
+  stepFade(x);
   if (gs.controls.autoRotate && now - startedAt > AUTO_SPIN_MS) gs.controls.autoRotate = false;
   const camMoved = gs.controls.update() as unknown as boolean; // r147 returns whether the camera moved
   updateDetail(x, now);
